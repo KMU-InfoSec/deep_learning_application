@@ -1,3 +1,8 @@
+# project document files/directories
+*/doc/*
+
+
+# --- Default Python .gitignore Options by gitignore.io/api/python ---
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
