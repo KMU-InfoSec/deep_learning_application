@@ -5,7 +5,7 @@ doc/
 result/
 
 # practice files
-./**/board.py
+**/board.py
 
 # --- Default Python .gitignore Options by gitignore.io/api/python ---
 # Byte-compiled / optimized / DLL files
