@@ -1,7 +1,7 @@
 import os
 import subprocess
 
-from preprocessing.settings import *
+from settings import *
 
 
 def make_idb_ops(file_path):

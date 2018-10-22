@@ -1,7 +1,7 @@
 import hashlib
 import pickle
 
-from preprocessing.settings import *
+from settings import *
 
 OPS_TYPE, GRAM_TYPE, VALUE_TYPE = FH_TYPE[3], FH_TYPE[5], FH_TYPE[6]
 
@@ -69,6 +69,68 @@ def normalize_vector(vector):
     return vector
 
 
+def analyze(file_name, ops_set, fh_ops_map, fh_vector):
+    log = ''
+
+    log += '----------------------\n'
+    log += '1. {}에 출현한 서로 다른 basic block ops 개수: {}개\n'.format(file_name, len(ops_set))
+    dot_flag = True
+    log += '>> '
+    for i, bb in enumerate(ops_set):
+        if i <= 3 or len(ops_set) - i <= 3:
+            log += '{} '.format(bb)
+        else:
+            if dot_flag:
+                log += '... '
+                dot_flag = False
+            else:
+                continue
+    else:
+        log += '\n'
+    log += '----------------------\n\n'
+
+    log += '----------------------\n'
+    log += '2. 서로 다른 basic block ops 가 피처 벡터에 매핑된 결과\n'
+    dot_flag = True
+    size = len(fh_vector)
+    for idx, (key, value) in enumerate(fh_ops_map.items()):
+        if idx <= 4 or size-idx <= 4:
+            log += ' {}th: '.format(idx)
+            for ops in value:
+                log += '{}, '.format(ops)
+            log += '\n'
+        else:
+            if dot_flag:
+                log += '... '
+                dot_flag = False
+            else:
+                continue
+    log += '----------------------\n\n'
+
+    log += '----------------------\n'
+    log += '3. 피처 벡터의 원소 개수: {}개\n'.format(size)
+    log += '>> '
+    dot_flag = True
+    for i in range(size):
+        if i <= 3 or size-i <= 3:
+            log += '{} '.format(fh_vector[i])
+        else:
+            if dot_flag:
+                log += '... '
+                dot_flag = False
+            else:
+                continue
+    else:
+        log += '\n'
+
+    log += '----------------------\n'
+
+    with open('feature_info.txt', 'w') as f:
+        for line in log:
+            f.write(line)
+    pass
+
+
 def make_fh(file_path):
     # define file path
     file_name, ext = os.path.splitext(os.path.split(file_path)[-1])
@@ -81,11 +143,21 @@ def make_fh(file_path):
     exist_dirs(save_path)
 
     # if the file was created
-    if os.path.exists(os.path.join(save_path, file_name)):
-        print('{} existed'.format(file_name))
-        return
+    if SAVE_FH_FLAG:
+        if os.path.exists(os.path.join(save_path, file_name)):
+            print('{} existed'.format(file_name))
+            return
 
     # make feature hashing vector
+    ops_set = set()
+
+    # 성능 검증을 위한 집합 자료형
+    analysis_flag = ANALYSIS_FLAG
+    if analysis_flag:
+        ops_set = set()
+        fh_ops_map = dict()  # 어떤 ops가 어떤 index에 맵핑되었는지 확인
+        for i in range(MAX_VECTOR_SIZE):
+            fh_ops_map[i] = set()
 
     # step 1. load ops file (pickle format)
     try:
@@ -144,6 +216,11 @@ def make_fh(file_path):
 
                 # step 3-3. apply the value to the vector
                 apply_feature_value(fh_vector, index, decision_cnt, decision_ctt)
+
+                if analysis_flag:
+                    ops_set.add(window)
+                    fh_ops_map[index].add(window)
+
         elif OPS_TYPE == 'f':
             for func_xor_value in function_xor_generator(opcodes):
                 # step 3-2. get the index, values
@@ -159,17 +236,22 @@ def make_fh(file_path):
     # step 4. scaling(max-min normalization to range [-1, 1])
     fh_vector = normalize_vector(fh_vector)
 
-    # save file
-    with open(os.path.join(save_path, file_name), 'wb') as f:
-        pickle.dump(fh_vector, f)
+    # make log file
+    if analysis_flag:
+        analyze(file_name, ops_set, fh_ops_map, fh_vector)
 
-    print('{} fh finished'.format(file_name))
-    pass
+    # save file
+    if SAVE_FH_FLAG:
+        with open(os.path.join(save_path, file_name), 'wb') as f:
+            pickle.dump(fh_vector, f)
+
+    print('{0} fh finished'.format(file_name))
+    return 0
 
 
 if __name__ == '__main__':
-    # _base_path = 'D:\\working_board\\toy_dataset\\malware\\ops\\00a2caa5de1a55c99a9c16164123109d.ops'
-    #
-    # make_fh(_base_path)
+    _base_path = r'D:\\working_board\\toy_dataset\\malware\\ops\\3b7b2df81714c3a692314524622800e4.ops'
+
+    make_fh(_base_path)
     pass
 

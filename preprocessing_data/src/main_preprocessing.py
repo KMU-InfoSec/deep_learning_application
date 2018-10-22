@@ -1,12 +1,12 @@
-import multiprocessing as mp
+import pathos.pools as pp
 import time
 
-from preprocessing.make_idb_ops import *
-from preprocessing.make_fh import *
+from make_idb_ops import *
+from make_fh import *
+
 
 if __name__ == '__main__':
-    mp.freeze_support()
-    p = mp.Pool(CPU_COUNT)
+    p = pp.ProcessPool(CPU_COUNT)
 
     print('*'*50)
     start_time = time.time()

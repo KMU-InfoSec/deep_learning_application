@@ -99,6 +99,10 @@ def plot_confusion_matrix(step, y_true, y_pred, output_size):
 
     print('plot confusion matrix start: ', end='')
 
+    # preprocessing
+    y_true = [x for x in y_true if x != -1]
+    y_pred = [x for x in y_pred if x != -1]
+
     # compute confusion matrix
     cnf_matrix = confusion_matrix(y_true=y_true, y_pred=y_pred)
 
@@ -212,15 +216,17 @@ def get_range_dates(start_date, end_date):
     return result_date
 
 
-# function:
+# function: 악성/정상 파일을 train/test 데이터셋으로 분류하는 함수. 특별히 악성코드는 수집날짜로 분류한다.
 def split_train_test_data(class_type, mal_path, ben_path, mal_train_start_date, mal_train_end_date,
                           mal_test_start_date, mal_test_end_date, ben_ratio, ext, fhs_flag):
     print('@ split train test data')
 
+    # 악성코드 경로를 받아오고, 날짜에 따라 학습/테스트 셋을 분류
     mal_data = np.array(walk_dir(os.path.join(mal_path, 'fhs') if fhs_flag else mal_path, 'fhs' if fhs_flag else ext))
     mal_train_dates = get_range_dates(mal_train_start_date, mal_train_end_date)
     mal_test_dates = get_range_dates(mal_test_start_date, mal_test_end_date)
     mal_train_indices, mal_test_indices = list(), list()
+
     for cnt, data in enumerate(mal_data):
         file_name = os.path.splitext(os.path.basename(data))[0]
         upper_path = data.split(os.sep)[-2]
@@ -231,6 +237,7 @@ def split_train_test_data(class_type, mal_path, ben_path, mal_train_start_date, 
             print('test: {}'.format(file_name))
             mal_test_indices.append(cnt)
 
+    # 정상파일 경로를 받아오고, 비율에 따라 학습/테스트 셋을 분류
     ben_data = np.array(walk_dir(ben_path, ext)) if class_type == 'BINARY' else list()
     ben_total_indices = np.arange(len(ben_data)); random.shuffle(ben_total_indices)
     ben_ratio_a, ben_ratio_b = ben_ratio.split(':')

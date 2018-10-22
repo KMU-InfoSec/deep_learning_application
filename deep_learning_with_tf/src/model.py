@@ -80,47 +80,34 @@ class KISNet:
             raise NotImplementedError
         pass
 
-    def learning_setting(self, Now_Epoch):
+    def _set_lr(self, cur_epoch):
         if self.LR_DECAY_OPTION == 'step_decay':
             lrate = self.train_learning_rate * math.pow(self.LR_DECAY_DROP_RATIO,
-                                                        math.floor(Now_Epoch/self.LR_DECAY_EPOCH))
+                                                        math.floor(cur_epoch/self.LR_DECAY_EPOCH))
             return lrate
 
         elif self.LR_DECAY_OPTION == 'exp_decay':
             decayed_learning_rate = self.train_learning_rate * math.pow(self.LR_DECAY_DROP_RATIO,
-                                                                         (Now_Epoch/self.LR_DECAY_EPOCH))
+                                                                         (cur_epoch/self.LR_DECAY_EPOCH))
             return decayed_learning_rate
 
         else:
             return self.train_learning_rate
 
-    def _load_data(self):
-        print('@ loading data')
-        if self.class_type == 'BINARY':
-            self.train_data = data.DataLoader(self.mal_path[self.indices[0][0]], self.ben_path[self.indices[1][0]],
-                                              self.label_path, batch_size=self.batch_size, mode='train')
-            self.eval_data = data.DataLoader(self.mal_path[self.indices[0][1]], self.ben_path[self.indices[1][1]],
-                                             self.label_path, batch_size=self.batch_size, mode='evaluate')
-        else:
-            self.train_data = data.DataLoader(self.mal_path[self.indices[0]], list(),
-                                              self.label_path, batch_size=self.batch_size, mode='train')
-            self.eval_data = data.DataLoader(self.mal_path[self.indices[1]], list(),
-                                             self.label_path, batch_size=self.batch_size, mode='evaluate')
-        input()
-        pass
-
     def train(self):
-        # self._load_data()
-        if self.class_type == 'BINARY':
+        if self.class_type == 'binary':
             self.train_data = data.DataLoader(self.mal_path[self.indices[0][0]], self.ben_path[self.indices[1][0]],
-                                              self.label_path, batch_size=self.batch_size, mode='train')
+                                              self.label_path, batch_size=self.batch_size, epoch=self.train_epoch,
+                                              mode='train')
+        else:
+            self.train_data = data.DataLoader(self.mal_path[self.indices[0]], list(), self.label_path,
+                                              batch_size=self.batch_size, epoch=self.train_epoch, mode='train')
 
         print('@ training start')
         self.train_flag = True
 
         # design network architecture
         with tf.device('/gpu:{}'.format(self.gpu_num)):
-
             if self.L2_REGULARIZATION == 'L2':
                 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.y_, labels=self.y_one_hot))\
                        + tf.losses.get_regularization_loss()
@@ -150,69 +137,72 @@ class KISNet:
             print('training file # : {}'.format(number_of_data))
 
             # train_epoch * number_of_data = batch_size * iteration
-            epoch = 0
-            iteration = 0
             train_time = time.time()
-            total_iteration = (self.train_epoch*number_of_data)//self.batch_size
+            # total_iteration = (self.train_epoch*number_of_data)//self.batch_size
             best_acc = 0.0
-            for (train_data, train_label) in self.train_data:
-                if iteration >= total_iteration:
-                    break
+            for iteration, (train_data, train_label, notice) in enumerate(self.train_data):
+                if not notice['signal']:
+                    _cost, _, _acc = sess.run([cost, optimizer, self.accuracy],
+                                              feed_dict={self.x: train_data, self.y: train_label,
+                                                         self.lr: self._set_lr(notice['epoch'])})
 
-                _cost, _, _acc = sess.run([cost, optimizer, self.accuracy],
-                                          feed_dict={self.x: train_data, self.y: train_label,
-                                                     self.lr: self.learning_setting(epoch)})
+                    if iteration and iteration % 50 == 0:
+                        print('[{i} iter] cost: {cost:.4f} / acc: {acc:.4f} / elapsed time: {time:.3f}'.format(
+                            i=iteration, cost=_cost, acc=_acc, time=time.time()-train_time
+                        ))
 
-                if iteration % 50 == 0:
-                    print('[{i}/{total}] cost: {cost:.4f} / acc: {acc:.3f} / elapsed time: {time:.3f}'.format(
-                        i=iteration, total=total_iteration, cost=_cost, acc=_acc, time=time.time()-train_time
-                    ))
-
-                if iteration % 100 == 0:
-                    model_saver.save(sess, model_path+'.tmp')
-
-                if iteration % (total_iteration//self.train_epoch) == 0 and iteration != 0:
-                    epoch += 1
-                    model_saver.save(sess, model_path)
-                    # temp_acc = self.evaluate_epoch_compare(sess, epoch)
+                    if iteration % 100 == 0:
+                        pass
+                        model_saver.save(sess, model_path)
+                else:  # epoch finish
+                    pass
+                    # temp_acc = self.evaluate_epoch_compare(sess, notice['epoch'])
                     # if temp_acc > best_acc:
                     #     best_acc = temp_acc
                     #     model_saver.save(sess, model_path)
-
-                iteration += 1
+            else:
+                pass
             train_time = time.time() - train_time
         print('@ training time : {}'.format(train_time))
         print('------training finish------')
-        self.train_data = list()  # delete training data
+        del self.train_data
         pass
 
     def evaluate_epoch_compare(self, sess, epoch):
+        if self.class_type == 'binary':
+            self.eval_data = data.DataLoader(self.mal_path[self.indices[0][1]], self.ben_path[self.indices[1][1]],
+                                             self.label_path, batch_size=self.batch_size, epoch=self.train_epoch,
+                                             mode='evaluate')
+        else:
+            self.eval_data = data.DataLoader(self.mal_path[self.indices[1]], list(), self.label_path,
+                                             batch_size=self.batch_size, epoch=self.train_epoch, mode='evaluate')
         answer_cnt = 0
         number_of_data = len(self.eval_data)
-        # print('file # : {}'.format(number_of_data))
 
         for iteration, (eval_data, eval_label) in enumerate(self.eval_data):
             try:
                 acc_cnt = sess.run(self.acc_cnt, feed_dict={self.x: eval_data, self.y: eval_label})
                 answer_cnt += int(acc_cnt)
             except Exception as e:
-                print(e)
+                # print(e)
+                pass
 
         total_accuracy = float(100. * (answer_cnt / number_of_data))
         print('@ [epoch {0}] accuracy : {1:.3f}'.format(epoch, total_accuracy))
+        del self.eval_data
         return total_accuracy
 
-    def evaluate(self):
-        if self.class_type == 'BINARY':
+    def evaluate(self):  # 혼동행렬 나오게 하기
+        if self.class_type == 'binary':
             self.eval_data = data.DataLoader(self.mal_path[self.indices[0][1]], self.ben_path[self.indices[1][1]],
-                                             self.label_path, batch_size=self.batch_size, mode='evaluate')
+                                             self.label_path, batch_size=self.batch_size, epoch=self.train_epoch,
+                                             mode='evaluate')
+        else:
+            self.eval_data = data.DataLoader(self.mal_path[self.indices[1]], list(), self.label_path,
+                                             batch_size=self.batch_size, epoch=self.train_epoch, mode='evaluate')
 
         print('@ evaluating start')
         self.train_flag = False
-
-        # design network architecture
-        # with tf.device('/gpu:{}'.format(self.gpu_num)):
-        #     tf.reset_default_graph()
 
         # restore model snapshot
         model_path = self.get_model_snapshot_path()
@@ -222,45 +212,46 @@ class KISNet:
         init = tf.global_variables_initializer()
         tf_config = tf.ConfigProto(allow_soft_placement=True)
 
-        actual_labels, pred_labels = list(), list()
+        actual_labels, pred_labels = list(), list()  #
         with tf.Session(config=tf_config) as sess:
             sess.run(init)
             model_saver.restore(sess, model_path)
 
             answer_cnt = 0
-
             number_of_data = len(self.eval_data)
             print('evaluating file # : {}'.format(number_of_data))
 
+            no_eval_data = 0
             eval_time = time.time()
             for iteration, (eval_data, eval_label) in enumerate(self.eval_data):
-                iter_no_data = len(eval_label)
+                no_eval_data += len(eval_label)
                 try:
-                    pred_label, actual_label, acc_cnt = sess.run([self.y_pred, self.y_true, self.acc_cnt], feed_dict={self.x: eval_data, self.y: eval_label})
+                    pred_label, actual_label, acc_cnt = sess.run([self.y_pred, self.y_true, self.acc_cnt],
+                                                                 feed_dict={self.x: eval_data, self.y: eval_label})
                     answer_cnt += int(acc_cnt)
 
-                    if iteration % 10 == 0:
-                        print('[{i}/{total}] acc: {acc:.3f} / elapsed time: {time:.4f}'.format(
-                            i=iteration*iter_no_data, total=number_of_data, acc=(answer_cnt/(iteration+1)), time=time.time()-eval_time
+                    if iteration and iteration % 10 == 0:
+                        print('[{i}/{total}] acc: {acc:.4f} / elapsed time: {time:.3f}'.format(
+                            i=no_eval_data, total=number_of_data, acc=(answer_cnt/no_eval_data),
+                            time=time.time()-eval_time
                         ))
                 except Exception as e:
                     print(e)
-                    pred_label = np.array([-1] * iter_no_data)
-                    actual_label = np.array([-1] * iter_no_data)
+                    pred_label = np.array([-1] * no_eval_data)
+                    actual_label = np.array([-1] * no_eval_data)
                 pred_labels += pred_label.tolist()
                 actual_labels += actual_label.tolist()
             eval_time = time.time() - eval_time
         total_accuracy = float(100. * (answer_cnt / number_of_data))
-        print('eval time : {0:.4f}'.format(eval_time))
-        print('accuracy : {0:.3f}%'.format(total_accuracy))
-        print('second/file #: {0:.6f}'.format(eval_time/number_of_data))
+        print('eval time : {0:.4f} seconds'.format(eval_time))
+        print('second/file : {0:.6f} seconds'.format(eval_time / number_of_data))
+        print('accuracy : {0:.3f}% [accuracy = (number_of_answer / number_of_eval_data)]'.format(total_accuracy))
         print('-----evaluating finish-----')
 
         # save learning result
-        if not self.fhs_flag:
-            save_learning_result_to_csv(self.model_num, self.eval_data.get_all_file_paths(), actual_labels, pred_labels)
+        # save_learning_result_to_csv(self.model_num, self.eval_data.get_all_file_names(), actual_labels, pred_labels)
 
         # plot confusion matrix
         # plot_confusion_matrix(self.model_num, actual_labels, pred_labels, self.output_layer_size)
-        self.eval_data = list()
+        del self.eval_data
         pass

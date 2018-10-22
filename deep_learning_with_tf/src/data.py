@@ -7,9 +7,10 @@ import queue as q
 
 
 class DataLoader:
-    def __init__(self, mal_paths, ben_paths, label_paths, batch_size, mode):
+    def __init__(self, mal_paths, ben_paths, label_paths, batch_size, epoch, mode):
         self.class_description = 'PE File Data Loader'
         self.iter_mode = mode  # for mini-batch data feeding
+        self.class_type = 'binary' if len(ben_paths) != 0 else 'multiclass'
         print('{}: {} mode'.format(self.class_description, mode))
 
         # initialize member variable
@@ -17,39 +18,48 @@ class DataLoader:
         self.ben_paths = ben_paths
         self.file_paths = np.concatenate((self.mal_paths, self.ben_paths), axis=0)
         self.label_paths = label_paths
-        self.mal_data = q.Queue()
-        self.ben_data = q.Queue()
 
         # allocate all data into memory
         print('data: set data into memory')
         _cnt = 0
-        for path in self.mal_paths:
+        mal_data = q.Queue()
+        ben_data = q.Queue()
+        mal_name_list = q.Queue()
+        ben_name_list = q.Queue()
+
+        for i, path in enumerate(self.mal_paths):
             content = _pickle.load(open(path, 'rb'))
-            print('read')
-            if isinstance(content[0], list):  # fhs
-                for l in content:
+
+            if isinstance(content, dict):  # fhs
+                for k, v in content.items():
                     _cnt += 1
-                    self.mal_data.put(l)
+                    mal_name_list.put(k)
+                    mal_data.put(v)
+                print(path)
             else:
                 _cnt += 1
-                self.mal_data.put(content)
-            if _cnt % 10000 == 0:
-                print('on reading malware: {}'.format(_cnt))
-        for path in self.ben_paths:
+                mal_name_list.put(os.path.splitext(os.path.basename(path))[0])
+                mal_data.put(content)
+            # if _cnt % 10000 == 0:
+            #     print('on reading malware: {}'.format(_cnt))
+        for i, path in enumerate(self.ben_paths):
             content = _pickle.load(open(path, 'rb'))
-            self.ben_data.put(content)
-        self.mal_data = list(self.mal_data.queue)
-        self.ben_data = list(self.ben_data.queue)
+            ben_name_list.put(os.path.splitext(os.path.basename(path))[0])
+            ben_data.put(content)
+        mal_data = list(mal_data.queue); ben_data = list(ben_data.queue)
+        mal_name_list = list(mal_name_list.queue); ben_name_list = list(ben_name_list.queue)
 
-        self.number_of_data = len(self.mal_data) + len(self.ben_data)
+        self.no_mal_data = len(mal_name_list)
+        self.no_ben_data = len(ben_name_list)
+        self.number_of_data = self.no_mal_data + self.no_ben_data
 
         # set label data
         print('data: set label')
-        if len(self.ben_paths) != 0:  # BINARY
-            self.mal_label = [1 for _ in self.mal_data]
-            self.ben_label = [0 for _ in self.ben_data]
+        if self.class_type == 'binary':  # BINARY
+            mal_label = [1 for _ in mal_name_list]
+            ben_label = [0 for _ in ben_name_list]
         else:
-            self.label_dict = dict()
+            label_dict = dict()
             with open(self.label_paths, 'r') as f:
                 rdr = csv.reader(f)
 
@@ -59,90 +69,81 @@ class DataLoader:
                 for line in rdr:
                     if int(line[1]) == 1:
                         md5, label = line[0], LABEL_TO_INT[line[2]]
-                        self.label_dict[md5] = label
+                        label_dict[md5] = label
                     else:
                         continue
 
-                self.mal_label = [self.label_dict[os.path.splitext(os.path.split(mal_path)[-1])[0]]
-                                  for mal_path in self.mal_paths]
-                self.ben_label = list()
+                mal_label = [label_dict[mal_name] for mal_name in mal_name_list]
+                ben_label = list()
                 pass
+
+        # make (data:label) dictionary
+        self.mal_data_dict = dict(zip(mal_name_list, mal_data))
+        self.mal_label_dict = dict(zip(mal_name_list, mal_label))
+        self.ben_data_dict = dict(zip(ben_name_list, ben_data))
+        self.ben_label_dict = dict(zip(ben_name_list, ben_label))
+
+        self.all_name_list = mal_name_list + ben_name_list
 
         # set batch size
         self.batch_size = batch_size
+
+        # set epoch
+        self.epoch = epoch
         pass
 
-    def get_all_file_paths(self):
-        return self.file_paths
-
-    def get_batch(self):
-        return self.batch_size
+    def get_all_file_names(self):
+        return self.all_name_list
 
     def __len__(self):
         return self.number_of_data
 
-    def __iter__(self):
-        half_batch_size = int(self.batch_size // 2)
-        if self.iter_mode == 'train':  # mini-batch
-            while True:
-                '''
-                    initialize batch data/label
-                '''
-                batch_data_lists, batch_label_lists = list(), list()
-
-                '''
-                    shuffle index list
-                '''
-                mal_idx_lists = np.arange(len(self.mal_data))
-                ben_idx_lists = np.arange(len(self.ben_data))
-
-                random.shuffle(mal_idx_lists)
-                random.shuffle(ben_idx_lists)
-
-                '''
-                    create batch file/label list
-                '''
-
-                if len(self.ben_paths) != 0:  # BINARY
-                    for mal_idx, ben_idx in zip(mal_idx_lists[:half_batch_size], ben_idx_lists[:half_batch_size]):
-                        # batch malware data
-                        batch_data_lists.append(self.mal_data[mal_idx])
-                        batch_label_lists.append(self.mal_label[mal_idx])
-                        # batch benignware data
-                        batch_data_lists.append(self.ben_data[ben_idx])
-                        batch_label_lists.append(self.ben_label[ben_idx])
-                else:
-                    for mal_idx in mal_idx_lists[:self.batch_size]:
-                        batch_data_lists.append(self.mal_data[mal_idx])
-                        batch_label_lists.append(self.mal_label[mal_idx])
-
-                yield (batch_data_lists, batch_label_lists)
-        else:  # evaluation mode
-            '''
-                initialize batch data/label
-            '''
-            batch_data_lists, batch_label_lists = list(), list()
-
-            if len(self.ben_paths) != 0:  # BINARY
-                for idx, (data, label) in enumerate(zip(np.concatenate((self.mal_data, self.ben_data), axis=0),
-                                                        np.concatenate((self.mal_label, self.ben_label), axis=0))):
-                    if idx % self.batch_size == 0 and idx != 0:
-                        yield batch_data_lists, batch_label_lists
-                        batch_data_lists.clear()
-                        batch_label_lists.clear()
-
-                    batch_data_lists.append(data)
-                    batch_label_lists.append(label)
-                else:
-                    yield batch_data_lists, batch_label_lists
+    def _mal_generator(self, batch_size):
+        mal_name_list = list(self.mal_label_dict.keys())
+        for epoch in range(1, self.epoch+1):
+            notice = {'epoch': epoch, 'signal': False}
+            random.shuffle(mal_name_list)
+            mal_data = [self.mal_data_dict[mal_name] for mal_name in mal_name_list]
+            mal_label = [self.mal_label_dict[mal_name] for mal_name in mal_name_list]
+            for i in range(0, self.no_mal_data, batch_size):
+                yield (mal_data[i:i+batch_size], mal_label[i:i+batch_size], notice)
             else:
-                for idx, (data, label) in enumerate(zip(self.mal_data, self.mal_label)):
-                    if idx % self.batch_size == 0 and idx != 0:
-                        yield batch_data_lists, batch_label_lists
-                        batch_data_lists.clear()
-                        batch_label_lists.clear()
+                print('@ epoch: {}'.format(epoch))
+                notice['signal'] = True
+                yield (list(), list(), notice)
 
-                    batch_data_lists.append(data)
-                    batch_label_lists.append(label)
-                else:
-                    yield batch_data_lists, batch_label_lists
+    def _ben_generator(self, batch_size):
+        ben_name_list = list(self.ben_label_dict.keys())
+        if self.class_type == 'multiclass':
+            while True:
+                yield (list(), list())
+        else:
+            while True:  # fit code to malware
+                random.shuffle(ben_name_list)
+                ben_data = [self.ben_data_dict[ben_name] for ben_name in ben_name_list]
+                ben_label = [self.ben_label_dict[ben_name] for ben_name in ben_name_list]
+                for i in range(0, self.no_ben_data, batch_size):
+                    yield (ben_data[i:i+batch_size], ben_label[i:i+batch_size])
+
+    def __iter__(self):
+        if self.class_type == 'binary':
+            batch_size = int(self.batch_size // 2)
+        else:
+            batch_size = self.batch_size
+
+        if self.iter_mode == 'train':  # mini-batch
+            for ((mal_data, mal_label, notice), (ben_data, ben_label)) in zip(self._mal_generator(batch_size),
+                                                                      self._ben_generator(batch_size)):
+                yield ((mal_data + ben_data), (mal_label + ben_label), notice)
+
+        else:  # evaluation mode
+            # initialize batch data/label
+            mal_data = list(self.mal_data_dict.values())
+            mal_label = list(self.mal_label_dict.values())
+            ben_data = list(self.ben_data_dict.values())
+            ben_label = list(self.ben_label_dict.values())
+
+            total_data_list = mal_data + ben_data
+            total_label_list = mal_label + ben_label
+            for i in range(0, self.number_of_data, self.batch_size):
+                yield (total_data_list[i:i+self.batch_size], total_label_list[i:i+self.batch_size])

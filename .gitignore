@@ -6,6 +6,7 @@ doc/
 result/
 **/*.set
 **/*.txt
+model_storage/
 
 # practice files
 **/board.py
