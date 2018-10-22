@@ -1,8 +1,11 @@
 # project document files/directories
 doc/
+.idea/
 
 # project result files/directories
 result/
+**/*.set
+**/*.txt
 
 # practice files
 **/board.py
