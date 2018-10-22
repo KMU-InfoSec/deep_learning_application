@@ -2,24 +2,24 @@
 
 ## Project Introduction
 - Project Name: Deep Learning with Tensorflow
--- This repository is related to the deep learning experiments in Information Security Lab at Kookmin University.
+  - This repository is related to the deep learning experiments in Information Security Lab at Kookmin University.
 
 
 ## Contributor
 - Seongmin Jeong (English Name: Allen)
--- Department: Computer Science in Kookmin University (MS Student)
--- Laboratory: Information Security Lab
--- Main Task: Deep Learning, Project Management
+  - Department: Computer Science in Kookmin University (MS Student)
+  - Laboratory: Information Security Lab
+  - Main Task: Deep Learning, Project Management
 
 - Youngjae Kim (English Name: Finn)
--- Department: Computer Science in Kookmin University (UROP)
--- Laboratory: Information Security Lab
--- Main Task: Preprocessing, Code Optimization
+  - Department: Computer Science in Kookmin University (UROP)
+  - Laboratory: Information Security Lab
+  - Main Task: Preprocessing, Code Optimization
 
 - HyeonSeok Kim
--- Department: Computer Science in Kookmin University (UROP)
--- Laboratory: Information Security Lab
--- Main Task: Deep Learning Experiment
+  - Department: Computer Science in Kookmin University (UROP)
+  - Laboratory: Information Security Lab
+  - Main Task: Deep Learning Experiment
 
 
 ## Project Components
