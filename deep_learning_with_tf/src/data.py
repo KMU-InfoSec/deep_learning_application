@@ -20,7 +20,7 @@ class DataLoader:
         self.label_paths = label_paths
 
         # allocate all data into memory
-        print('data: set data into memory')
+        print('{} data: set data into memory'.format(mode))
         _cnt = 0
         mal_data = q.Queue()
         ben_data = q.Queue()
@@ -54,7 +54,7 @@ class DataLoader:
         self.number_of_data = self.no_mal_data + self.no_ben_data
 
         # set label data
-        print('data: set label')
+        print('{} data: set label'.format(mode))
         if self.class_type == 'binary':  # BINARY
             mal_label = [1 for _ in mal_name_list]
             ben_label = [0 for _ in ben_name_list]

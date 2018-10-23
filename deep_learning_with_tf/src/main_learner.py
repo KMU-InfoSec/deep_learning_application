@@ -49,8 +49,10 @@ def run_using_k_fold(model_dic, once_flag):
     else:
         cv_split_obj = cv.split(mal_data)
 
-    for indices in cv_split_obj:
+    acc_list = list()
+    for idx, indices in enumerate(cv_split_obj):
         print('*' * 50)
+        print('{}번째 실험'.format(idx+1))
         print('@ load model')
 
         model_dic['mal_path'] = mal_data
@@ -59,9 +61,10 @@ def run_using_k_fold(model_dic, once_flag):
 
         classifier = KISNet(model_num=step, model_dic=model_dic)
         classifier.train()
-        classifier.evaluate()
+        acc = classifier.evaluate()
         if once_flag:
             break
+        acc_list.append(acc)
     pass
 
 

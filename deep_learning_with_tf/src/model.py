@@ -244,7 +244,8 @@ class KISNet:
             eval_time = time.time() - eval_time
         total_accuracy = float(100. * (answer_cnt / number_of_data))
         print('eval time : {0:.4f} seconds'.format(eval_time))
-        print('second/file : {0:.6f} seconds'.format(eval_time / number_of_data))
+        print('second/file[{0}] : {1:.6f} seconds'.format(number_of_data, eval_time / number_of_data))
+        print('맞은 개수: {}'.format(answer_cnt))
         print('accuracy : {0:.3f}% [accuracy = (number_of_answer / number_of_eval_data)]'.format(total_accuracy))
         print('-----evaluating finish-----')
 
@@ -254,4 +255,5 @@ class KISNet:
         # plot confusion matrix
         # plot_confusion_matrix(self.model_num, actual_labels, pred_labels, self.output_layer_size)
         del self.eval_data
-        pass
+
+        return total_accuracy

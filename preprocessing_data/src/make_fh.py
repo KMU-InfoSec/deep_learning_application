@@ -250,7 +250,16 @@ def make_fh(file_path):
 
 
 if __name__ == '__main__':
-    _base_path = r'D:\\working_board\\toy_dataset\\malware\\ops\\3b7b2df81714c3a692314524622800e4.ops'
+    '''
+    mal (1): 3b7b2df81714c3a692314524622800e4.ops
+    mal (2): 65a3aa6ad87fc8b3d69cd512962f0cbb.ops
+    mal (3): 29087d385a1966412a0ca324ba8f9fb0.ops
+    ben (1): 997d1c0b9324ea619217c96ec93b010b.ops
+    ben (2): 3a6f062a63178ecc4083376f420ca478.ops
+    ben (3): cfb2a47fb73a9498ef8bfb9846f3b725.ops
+    '''
+
+    _base_path = r'D:\\working_board\\toy_dataset\\malware\\ops\\29087d385a1966412a0ca324ba8f9fb0.ops'
 
     make_fh(_base_path)
     pass
