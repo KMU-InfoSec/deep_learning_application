@@ -245,7 +245,7 @@ class KISNet:
         total_accuracy = float(100. * (answer_cnt / number_of_data))
         print('eval time : {0:.4f} seconds'.format(eval_time))
         print('second/file[{0}] : {1:.6f} seconds'.format(number_of_data, eval_time / number_of_data))
-        print('맞은 개수: {}'.format(answer_cnt))
+        print('맞은 개수: {}개'.format(answer_cnt))
         print('accuracy : {0:.3f}% [accuracy = (number_of_answer / number_of_eval_data)]'.format(total_accuracy))
         print('-----evaluating finish-----')
 

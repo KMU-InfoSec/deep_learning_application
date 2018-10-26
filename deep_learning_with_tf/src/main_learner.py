@@ -65,6 +65,9 @@ def run_using_k_fold(model_dic, once_flag):
         if once_flag:
             break
         acc_list.append(acc)
+    else:
+        mean_acc = sum(acc_list)/len(acc_list)
+        print('평균 정확도: {}'.format(mean_acc))
     pass
 
 
