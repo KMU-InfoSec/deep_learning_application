@@ -8,7 +8,7 @@ ANALYSIS_FLAG = 0
 SAVE_FH_FLAG = 1
 
 # IDB/OPS OPTION
-FILE_CLASS = 'malware'  # malware, benignware
+FILE_CLASS = 'unknown'  # malware, benignware
 
 # FH OPTION
 FH_TYPE = 'fh_panr'  # counter(r), content(c), p(process), a(apics)

@@ -159,7 +159,7 @@ def make_fh(file_path):
         for i in range(MAX_VECTOR_SIZE):
             fh_ops_map[i] = set()
 
-    # step 1. load ops file (pickle format)
+    # step 1. load input file (pickle format)
     try:
         with open(file_path, 'rb') as f:
             content = pickle.load(f)
@@ -176,25 +176,28 @@ def make_fh(file_path):
     # step 3. check GRAM_TYPE
     if GRAM_TYPE == 'n':
         # step 3-0. convert 3-d list to 1-d list
-        opcodes = list()
-        while True:
-            for each in content:
-                opcodes.extend(each)
-            if isinstance(opcodes[0], list):
-                content = opcodes
-                opcodes = list()
+        def make_1d_list(elements):
+            if len(elements) == 0:
+                return list()
             else:
-                break
+                ret = list()
+                for each in elements:
+                    if isinstance(each, list):
+                        ret.extend(make_1d_list(each))
+                    else:
+                        ret.append(each)
+            return ret
+        content = make_1d_list(content)
 
-        # step 3-1. check length of opcode list
-        count_of_opcode = len(opcodes)
-        if count_of_opcode < N_GRAM:
+        # step 3-1. check length of content
+        no_content = len(content)
+        if no_content < N_GRAM:
             return
 
         # step 3-2. initialize sliding window
         window = ''
         for i in range(N_GRAM):
-            window += opcodes[i]
+            window += content[i]
 
         # step 3-3. get the hash value
         index, decision_cnt, decision_ctt = get_vector_index(window)
@@ -203,13 +206,11 @@ def make_fh(file_path):
         apply_feature_value(fh_vector, index, decision_cnt, decision_ctt)
 
         # step 3-5. iterate previous step
-        for i in range(N_GRAM, count_of_opcode):
+        for i in range(N_GRAM, no_content):
             # step 3-5-2. get window
-            window = window[2:] + opcodes[i]
-
+            window = window[len(content[i-N_GRAM]):] + content[i]
             # step 3-5-3. get the hash value
             index, decision_cnt, decision_ctt = get_vector_index(window)
-
             # step 3-5-4. apply the value to the vector
             apply_feature_value(fh_vector, index, decision_cnt, decision_ctt)
     # ------------------------------------------------------------------------------------- #
@@ -258,7 +259,7 @@ def make_fh(file_path):
 
 
 if __name__ == '__main__':
-    _base_path = r'D:\working_board\dataset_kisa\malware\acs\00a5274ed9345c8f67d2765447627d5d.apics'
+    _base_path = r'D:\working_board\dataset_kisa\unknown\acs\3442274c74a24f5d27bab6bb9664cd26.apics'
 
     make_fh(_base_path)
     pass
