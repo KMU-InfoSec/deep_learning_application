@@ -135,7 +135,7 @@ def make_fh(file_path):
     # define file path
     file_name, ext = os.path.splitext(os.path.split(file_path)[-1])
     file_name = file_name + '.{}'.format(FH_TYPE)
-    sub_file_path = file_path.replace(OPS_PATH, '').replace(os.path.basename(file_path), '')
+    sub_file_path = file_path.replace(FH_INPUT_PATH, '').replace(os.path.basename(file_path), '')
 
     save_path = FH_PATH + sub_file_path
 
@@ -162,8 +162,8 @@ def make_fh(file_path):
     # step 1. load ops file (pickle format)
     try:
         with open(file_path, 'rb') as f:
-            opcodes = pickle.load(f)
-        if len(opcodes) == 0:
+            content = pickle.load(f)
+        if len(content) == 0:
             print('@ null ops: {}'.format(file_name))
             return
     except:
@@ -176,8 +176,16 @@ def make_fh(file_path):
     # step 3. check GRAM_TYPE
     if GRAM_TYPE == 'n':
         # step 3-0. convert 3-d list to 1-d list
-        opcodes = [e for sl in opcodes for e in sl]
-        opcodes = [e for sl in opcodes for e in sl]
+        opcodes = list()
+        while True:
+            for each in content:
+                opcodes.extend(each)
+            if isinstance(opcodes[0], list):
+                content = opcodes
+                opcodes = list()
+            else:
+                break
+
         # step 3-1. check length of opcode list
         count_of_opcode = len(opcodes)
         if count_of_opcode < N_GRAM:
@@ -207,7 +215,7 @@ def make_fh(file_path):
     # ------------------------------------------------------------------------------------- #
     elif GRAM_TYPE == 'v':  # fops, bops
         if OPS_TYPE == 'b':
-            for opcode in basic_block_generator(opcodes):
+            for opcode in basic_block_generator(content):
                 # step 3-1. get window (variable size)
                 window = ''.join(opcode)
 
@@ -222,7 +230,7 @@ def make_fh(file_path):
                     fh_ops_map[index].add(window)
 
         elif OPS_TYPE == 'f':
-            for func_xor_value in function_xor_generator(opcodes):
+            for func_xor_value in function_xor_generator(content):
                 # step 3-2. get the index, values
                 index, decision_cnt, decision_ctt = get_vector_index('', func_xor_value)
 
@@ -250,16 +258,7 @@ def make_fh(file_path):
 
 
 if __name__ == '__main__':
-    '''
-    mal (1): 3b7b2df81714c3a692314524622800e4.ops
-    mal (2): 65a3aa6ad87fc8b3d69cd512962f0cbb.ops
-    mal (3): 29087d385a1966412a0ca324ba8f9fb0.ops
-    ben (1): 997d1c0b9324ea619217c96ec93b010b.ops
-    ben (2): 3a6f062a63178ecc4083376f420ca478.ops
-    ben (3): cfb2a47fb73a9498ef8bfb9846f3b725.ops
-    '''
-
-    _base_path = r'D:\\working_board\\toy_dataset\\malware\\ops\\29087d385a1966412a0ca324ba8f9fb0.ops'
+    _base_path = r'D:\working_board\dataset_kisa\malware\acs\00a5274ed9345c8f67d2765447627d5d.apics'
 
     make_fh(_base_path)
     pass

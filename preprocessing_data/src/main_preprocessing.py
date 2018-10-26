@@ -18,8 +18,21 @@ if __name__ == '__main__':
     # print("elapsed time: {}".format(time.time() - start_time))
 
     # fh
-    ops_file_lists = create_file_list(OPS_PATH)
-    print("Total OPS Count : {}".format(len(ops_file_lists)))
-    p.map(make_fh, ops_file_lists)
+    # ops_file_list = create_file_list(OPS_PATH)
+    # print("Total OPS Count : {}".format(len(ops_file_list)))
+    # p.map(make_fh, ops_file_list)
+    # print("elapsed time: {}".format(time.time() - start_time))
+
+    # acs fh
+    acs_file_list = create_file_list(r'D:\Downloads\apics\apics')
+    for acs_file in acs_file_list:
+        file_name = os.path.split(acs_file)[1]
+        dst_path = os.path.join(ACS_PATH, file_name)
+        os.rename(acs_file, dst_path)
+
+    acs_file_list = create_file_list(ACS_PATH)
+    print("Total ACS Count : {}".format(len(acs_file_list)))
+    p.map(make_fh, acs_file_list)
     print("elapsed time: {}".format(time.time() - start_time))
+
     pass
