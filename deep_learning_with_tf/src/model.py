@@ -20,7 +20,7 @@ class KISNet:
         self.network_type = model_dic['net_type']
 
         self.train_flag = False
-        self.fhs_flag = model_dic['fhs_flag']
+        self.data_type = model_dic['data_type']
 
         '''
             init deep learning hyper parameter
@@ -102,6 +102,14 @@ class KISNet:
         else:
             self.train_data = data.DataLoader(self.mal_path[self.indices[0]], list(), self.label_path,
                                               batch_size=self.batch_size, epoch=self.train_epoch, mode='train')
+        # eval data for kisa
+        if self.class_type == 'binary':
+            self.eval_data = data.DataLoader(self.mal_path[self.indices[0][1]], self.ben_path[self.indices[1][1]],
+                                             self.label_path, batch_size=self.batch_size, epoch=self.train_epoch,
+                                             mode='evaluate')
+        else:
+            self.eval_data = data.DataLoader(self.mal_path[self.indices[1]], list(), self.label_path,
+                                             batch_size=self.batch_size, epoch=self.train_epoch, mode='evaluate')
 
         print('@ training start')
         self.train_flag = True
@@ -115,7 +123,7 @@ class KISNet:
                 optimizer = tf.train.AdamOptimizer(self.lr).minimize(cost)
 
             else:
-                # loss function: softmax, cros`*-/*-/s0.-entropy
+                # loss function: softmax, cross-entropy
                 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.y_, labels=self.y_one_hot))
 
                 # optimizer: Adaptive momentum optimizer
@@ -136,9 +144,7 @@ class KISNet:
             number_of_data = len(self.train_data)
             print('training file # : {}'.format(number_of_data))
 
-            # train_epoch * number_of_data = batch_size * iteration
             train_time = time.time()
-            # total_iteration = (self.train_epoch*number_of_data)//self.batch_size
             best_acc = 0.0
             for iteration, (train_data, train_label, notice) in enumerate(self.train_data):
                 if not notice['signal']:
@@ -169,13 +175,13 @@ class KISNet:
         pass
 
     def evaluate_epoch_compare(self, sess, epoch):
-        if self.class_type == 'binary':
-            self.eval_data = data.DataLoader(self.mal_path[self.indices[0][1]], self.ben_path[self.indices[1][1]],
-                                             self.label_path, batch_size=self.batch_size, epoch=self.train_epoch,
-                                             mode='evaluate')
-        else:
-            self.eval_data = data.DataLoader(self.mal_path[self.indices[1]], list(), self.label_path,
-                                             batch_size=self.batch_size, epoch=self.train_epoch, mode='evaluate')
+        # if self.class_type == 'binary':
+        #     self.eval_data = data.DataLoader(self.mal_path[self.indices[0][1]], self.ben_path[self.indices[1][1]],
+        #                                      self.label_path, batch_size=self.batch_size, epoch=self.train_epoch,
+        #                                      mode='evaluate')
+        # else:
+        #     self.eval_data = data.DataLoader(self.mal_path[self.indices[1]], list(), self.label_path,
+        #                                      batch_size=self.batch_size, epoch=self.train_epoch, mode='evaluate')
         answer_cnt = 0
         number_of_data = len(self.eval_data)
 
@@ -189,17 +195,17 @@ class KISNet:
 
         total_accuracy = float(100. * (answer_cnt / number_of_data))
         print('@ [epoch {0}] accuracy : {1:.3f}'.format(epoch, total_accuracy))
-        del self.eval_data
+        # del self.eval_data
         return total_accuracy
 
     def evaluate(self):  # 혼동행렬 나오게 하기
-        if self.class_type == 'binary':
-            self.eval_data = data.DataLoader(self.mal_path[self.indices[0][1]], self.ben_path[self.indices[1][1]],
-                                             self.label_path, batch_size=self.batch_size, epoch=self.train_epoch,
-                                             mode='evaluate')
-        else:
-            self.eval_data = data.DataLoader(self.mal_path[self.indices[1]], list(), self.label_path,
-                                             batch_size=self.batch_size, epoch=self.train_epoch, mode='evaluate')
+        # if self.class_type == 'binary':
+        #     self.eval_data = data.DataLoader(self.mal_path[self.indices[0][1]], self.ben_path[self.indices[1][1]],
+        #                                      self.label_path, batch_size=self.batch_size, epoch=self.train_epoch,
+        #                                      mode='evaluate')
+        # else:
+        #     self.eval_data = data.DataLoader(self.mal_path[self.indices[1]], list(), self.label_path,
+        #                                      batch_size=self.batch_size, epoch=self.train_epoch, mode='evaluate')
 
         print('@ evaluating start')
         self.train_flag = False
@@ -250,10 +256,10 @@ class KISNet:
         print('-----evaluating finish-----')
 
         # save learning result
-        # save_learning_result_to_csv(self.model_num, self.eval_data.get_all_file_names(), actual_labels, pred_labels)
+        save_learning_result_to_csv(self.model_num, self.eval_data.get_all_file_names(), actual_labels, pred_labels)
 
         # plot confusion matrix
-        # plot_confusion_matrix(self.model_num, actual_labels, pred_labels, self.output_layer_size)
+        plot_confusion_matrix(self.model_num, actual_labels, pred_labels, self.output_layer_size)
         del self.eval_data
 
         return total_accuracy

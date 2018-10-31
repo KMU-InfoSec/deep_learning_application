@@ -174,17 +174,23 @@ def save_learning_result_to_csv(step, filenames=None, actuals=None, preds=None):
     #         _pickle.dump(preds, f)
 
     # save result as csv file
-    # with open(os.path.join(result_dir, 'learning_result{}.csv'.format(step)), 'w', newline='') as f:
+    # with open(os.path.join(result_dir, 'learning_result{}.csv'.format(step)), 'w', newline='', encoding='utf-8') as f:
     #     wr = csv.writer(f)
     #     for name, actual_label, pred_label in zip(filenames, actuals, preds):
     #         wr.writerow([name, actual_label, pred_label])
 
-    # save result that gets wrong cases as csv file
-    with open(os.path.join(result_dir, 'profiling{}.csv'.format(step)), 'w', newline='') as f:
+    # save result as csv file (only kisa)
+    with open(os.path.join(result_dir, 'kisa{}.csv'.format(step)), 'w', newline='', encoding='utf-8') as f:
         wr = csv.writer(f)
-        for name, actual_label, pred_label in zip(filenames, actuals, preds):
-            if actual_label != pred_label:
-                wr.writerow([name, actual_label, pred_label])
+        for name, pred_label in zip(filenames, preds):
+            wr.writerow([name, pred_label])
+
+    # save result that gets wrong cases as csv file
+    # with open(os.path.join(result_dir, 'profiling{}.csv'.format(step)), 'w', newline='', encoding='utf-8') as f:
+    #     wr = csv.writer(f)
+    #     for name, actual_label, pred_label in zip(filenames, actuals, preds):
+    #         if actual_label != pred_label:
+    #             wr.writerow([name, actual_label, pred_label])
     pass
 
 
@@ -251,3 +257,24 @@ def split_train_test_data(class_type, mal_path, ben_path, mal_train_start_date, 
         result_indices.append((ben_train_indices, ben_test_indices))
 
     return mal_data, ben_data, result_indices
+
+
+def read_kisa_data(test_file_path, label_path, fh_type):
+    label_dict = dict()
+    with open(label_path, 'r', encoding='utf-8') as f:
+        rdr = csv.reader(f)
+        for line in rdr:
+            file_name, label = line[0].replace('.vir', '.{}'.format(fh_type)), int(line[1])
+            label_dict[file_name] = label
+
+    mal_data_path = list()
+    ben_data_path = list()
+    for (file_name, label) in label_dict.items():
+        full_path = os.path.join(test_file_path, file_name)
+        if os.path.exists(full_path):
+            if label == 0:  # benignware
+                ben_data_path.append(full_path)
+            else:
+                mal_data_path.append(full_path)
+
+    return np.array(mal_data_path), np.array(ben_data_path)

@@ -48,7 +48,7 @@ def inference_CNN(x, prob, L2_REGULARIZATION_SCALE, train_flag=False):
     for hidden_node in hidden_node_list:
         dense_layer = tf.layers.dense(inputs=dense_layer, units=hidden_node, activation=tf.nn.leaky_relu,
                                       kernel_regularizer=tf.contrib.layers.l2_regularizer(L2_REGULARIZATION_SCALE))
-        # dense_layer = tf.layers.dropout(dense_layer, prob, training=train_flag)
+        dense_layer = tf.layers.dropout(dense_layer, prob, training=train_flag)
 
     y_ = tf.layers.dense(inputs=dense_layer, units=output_layer_size)
 
