@@ -11,12 +11,17 @@ SAVE_FH_FLAG = 1
 FILE_CLASS = 'unknown'  # malware, benignware
 
 # FH OPTION
-FH_TYPE = 'fh_panr'  # counter(r), content(c), p(process), a(apics)
-N_GRAM = 4
+'''
+(b): basic block, (f): function, (p): process
+(o): opcode seq, (a): api call seq, (s): string
+(n): n-gram, (v): v-gram
+(r): frequency, (c): content
+'''
+FH_TYPE = 'fh_psnr'  # counter(r), content(c), p(process), a(apics)
+N_GRAM = 1
 FH_CONTENT_BOUNDARY = 65536  # 2^8, 2^16, 2^32, 2^64
-MAX_VECTOR_SIZE = 4096  # 4096, 2048, 1024, 512, 256, 128
 MAX_VECTOR_SIZE_BIT = 12
-BOUNDARY_SIZE = -1
+MAX_VECTOR_SIZE = (1 << MAX_VECTOR_SIZE_BIT)
 
 # IDA 경로
 IDA_PATH = os.path.normpath('C:/Program Files/IDA 7.0/idat64.exe')
@@ -41,10 +46,11 @@ IDA_PYTHON_SCRIPT_PATH = os.path.normpath(os.path.abspath('./ida_script/ida_opco
 ############################ OPS ############################
 OPS_PATH = os.path.normpath(os.path.abspath('{0}/{1}/ops'.format(BASE_PATH, FILE_CLASS)))
 ACS_PATH = os.path.normpath(os.path.abspath('{0}/{1}/acs'.format(BASE_PATH, FILE_CLASS)))
-FH_INPUT_PATH = os.path.normpath(os.path.abspath(ACS_PATH))
+STR_PATH = os.path.normpath(os.path.abspath('{0}/{1}/str'.format(BASE_PATH, FILE_CLASS)))
+FH_INPUT_PATH = os.path.normpath(os.path.abspath(STR_PATH))
 
 ############################ FH ############################
-FH_PATH = os.path.normpath(os.path.abspath('{0}/{1}/{2}/{3}'.format(BASE_PATH, FILE_CLASS, FH_TYPE, MAX_VECTOR_SIZE)))
+FH_PATH = os.path.normpath(os.path.abspath('{0}/{1}/{2}/{3}/{4}'.format(BASE_PATH, FILE_CLASS, FH_TYPE, N_GRAM, MAX_VECTOR_SIZE)))
 
 
 # function #

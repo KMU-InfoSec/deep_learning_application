@@ -34,37 +34,35 @@ def basic_block_generator(input_list):
 def get_vector_index(window, hash_value=None):
     if hash_value is None:
         # get the hash value
-        cryp_hash = int(hashlib.sha256(window.encode('utf-8')).hexdigest(), 16)
-        hash_value = cryp_hash
+        hash_value = int(hashlib.sha256(window.encode('utf-8')).hexdigest(), 16)
 
-    cryp_hash2 = hash_value // MAX_VECTOR_SIZE
-    cryp_hash2 = hash_value >> MAX_VECTOR_SIZE_BIT
+    # hash value 가 두 개 필요하므로 해시함수의 값을 나눈다. hash value --> (hash1, hash2)
+    hash_1 = hash_value >> MAX_VECTOR_SIZE_BIT
+    hash_2 = hash_value & ((1 << MAX_VECTOR_SIZE_BIT) - 1)
 
-    index = hash_value % MAX_VECTOR_SIZE  # can use bit-wise operation
-    decision_cnt = cryp_hash2 % 2
-    decision_content = cryp_hash2 % FH_CONTENT_BOUNDARY
+    index = hash_2
+    decision_sign = hash_1 & 0x1
+    decision_content = hash_1 & (FH_CONTENT_BOUNDARY - 1)
 
-    return index, decision_cnt, decision_content
+    return index, decision_sign, decision_content
 
 
-def apply_feature_value(vector, index, decision_cnt, decision_ctt):
+def apply_feature_value(vector, index, decision_sign, decision_content):
     if VALUE_TYPE == 'r':
-        if decision_cnt == 1:
+        if decision_sign == 1:
             vector[index] += 1
         else:  # decision == 0
             vector[index] -= 1
     else:  # content
-        vector[index] = max([vector[index], decision_ctt])
+        vector[index] = max([vector[index], decision_content])
         pass
 
 
 def normalize_vector(vector):
     max_value = max(vector)
     min_value = min(vector)
-    if max_value - min_value == 0:
-        vector = [0 for _ in range(MAX_VECTOR_SIZE)]
-    else:
-        vector = [2 * ((x - min_value) / (max_value - min_value)) - 1 for x in vector]
+
+    vector = [2 * ((x - min_value) / (max_value - min_value)) - 1 for x in vector]
 
     return vector
 
@@ -171,7 +169,7 @@ def make_fh(file_path):
         return
 
     # step 2. initialize feature vector
-    fh_vector = [0 for _ in range(MAX_VECTOR_SIZE)]
+    fh_vector = [0] * MAX_VECTOR_SIZE
 
     # step 3. check GRAM_TYPE
     if GRAM_TYPE == 'n':
@@ -200,19 +198,19 @@ def make_fh(file_path):
             window += content[i]
 
         # step 3-3. get the hash value
-        index, decision_cnt, decision_ctt = get_vector_index(window)
+        index, decision_sign, decision_content = get_vector_index(window)
 
         # step 3-4. apply the value to the vector
-        apply_feature_value(fh_vector, index, decision_cnt, decision_ctt)
+        apply_feature_value(fh_vector, index, decision_sign, decision_content)
 
         # step 3-5. iterate previous step
         for i in range(N_GRAM, no_content):
             # step 3-5-2. get window
             window = window[len(content[i-N_GRAM]):] + content[i]
             # step 3-5-3. get the hash value
-            index, decision_cnt, decision_ctt = get_vector_index(window)
+            index, decision_sign, decision_content = get_vector_index(window)
             # step 3-5-4. apply the value to the vector
-            apply_feature_value(fh_vector, index, decision_cnt, decision_ctt)
+            apply_feature_value(fh_vector, index, decision_sign, decision_content)
     # ------------------------------------------------------------------------------------- #
     elif GRAM_TYPE == 'v':  # fops, bops
         if OPS_TYPE == 'b':
@@ -221,10 +219,10 @@ def make_fh(file_path):
                 window = ''.join(opcode)
 
                 # step 3-2. get the hash value
-                index, decision_cnt, decision_ctt = get_vector_index(window)
+                index, decision_sign, decision_content = get_vector_index(window)
 
                 # step 3-3. apply the value to the vector
-                apply_feature_value(fh_vector, index, decision_cnt, decision_ctt)
+                apply_feature_value(fh_vector, index, decision_sign, decision_content)
 
                 if analysis_flag:
                     ops_set.add(window)
@@ -233,11 +231,12 @@ def make_fh(file_path):
         elif OPS_TYPE == 'f':
             for func_xor_value in function_xor_generator(content):
                 # step 3-2. get the index, values
-                index, decision_cnt, decision_ctt = get_vector_index('', func_xor_value)
+                index, decision_sign, decision_content = get_vector_index('', func_xor_value)
 
                 # step 3-3. apply the value to the vector
-                apply_feature_value(fh_vector, index, decision_cnt, decision_ctt)
-
+                apply_feature_value(fh_vector, index, decision_sign, decision_content)
+        else:
+            raise NotImplementedError
     else:
         print('invalid GRAM TYPE!')
         return
@@ -259,7 +258,7 @@ def make_fh(file_path):
 
 
 if __name__ == '__main__':
-    _base_path = r'D:\working_board\dataset_kisa\unknown\acs\3442274c74a24f5d27bab6bb9664cd26.apics'
+    _base_path = r'D:\working_board\dataset_kisa\benignware\str\strings_ahnlab\0000b97b3322e5792f8c88e01b4f4313.str'
 
     make_fh(_base_path)
     pass

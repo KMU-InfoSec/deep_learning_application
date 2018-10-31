@@ -23,10 +23,9 @@ if __name__ == '__main__':
     # p.map(make_fh, ops_file_list)
     # print("elapsed time: {}".format(time.time() - start_time))
 
-    # acs fh
-    acs_file_list = create_file_list(ACS_PATH)
-    print("Total ACS Count : {}".format(len(acs_file_list)))
-    p.map(make_fh, acs_file_list)
+    file_list = create_file_list(FH_INPUT_PATH)
+    print("Total ACS Count : {}".format(len(file_list)))
+    p.map(make_fh, file_list)
     print("elapsed time: {}".format(time.time() - start_time))
 
     pass
