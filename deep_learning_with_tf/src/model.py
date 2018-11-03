@@ -50,7 +50,7 @@ class KISNet:
             tf.reset_default_graph()
             self.x = tf.placeholder(tf.float32, shape=[None, self.input_layer_size], name='x_input')
             self.y = tf.placeholder(tf.int32, shape=[None], name='y_output')
-            self.y_ = self.inference()
+            self.y_, self.flatten = self.inference()
             self.y_one_hot = tf.one_hot(self.y, self.output_layer_size, dtype=tf.int32, name='y_one-hot')
             self.lr = tf.placeholder(tf.float32)
 
@@ -198,7 +198,7 @@ class KISNet:
         # del self.eval_data
         return total_accuracy
 
-    def evaluate(self):  # 혼동행렬 나오게 하기
+    def evaluate(self):
         # if self.class_type == 'binary':
         #     self.eval_data = data.DataLoader(self.mal_path[self.indices[0][1]], self.ben_path[self.indices[1][1]],
         #                                      self.label_path, batch_size=self.batch_size, epoch=self.train_epoch,
@@ -218,32 +218,35 @@ class KISNet:
         init = tf.global_variables_initializer()
         tf_config = tf.ConfigProto(allow_soft_placement=True)
 
-        actual_labels, pred_labels = list(), list()  #
+        actual_labels, pred_labels = list(), list()
         with tf.Session(config=tf_config) as sess:
             sess.run(init)
             model_saver.restore(sess, model_path)
 
             answer_cnt = 0
+            flatten_list = list()
             number_of_data = len(self.eval_data)
             print('evaluating file # : {}'.format(number_of_data))
 
-            no_eval_data = 0
             eval_time = time.time()
             for iteration, (eval_data, eval_label) in enumerate(self.eval_data):
-                no_eval_data += len(eval_label)
+                no_eval_data = len(eval_label)
                 try:
-                    pred_label, actual_label, acc_cnt = sess.run([self.y_pred, self.y_true, self.acc_cnt],
-                                                                 feed_dict={self.x: eval_data, self.y: eval_label})
+                    pred_label, actual_label, acc_cnt, flatten = sess.run(
+                        [self.y_pred, self.y_true, self.acc_cnt, self.flatten],
+                        feed_dict={self.x: eval_data, self.y: eval_label})
                     answer_cnt += int(acc_cnt)
+                    flatten_list.append(flatten)
 
                     if iteration and iteration % 10 == 0:
+                        _i = iteration * no_eval_data
                         print('[{i}/{total}] acc: {acc:.4f} / elapsed time: {time:.3f}'.format(
-                            i=no_eval_data, total=number_of_data, acc=(answer_cnt/no_eval_data),
+                            i=_i, total=number_of_data, acc=(answer_cnt/_i),
                             time=time.time()-eval_time
                         ))
                 except Exception as e:
                     print(e)
-                    pred_label = np.array([-1] * no_eval_data)
+                    pred_label = np.array([-1] * len(eval_label))
                     actual_label = np.array([-1] * no_eval_data)
                 pred_labels += pred_label.tolist()
                 actual_labels += actual_label.tolist()
@@ -254,6 +257,11 @@ class KISNet:
         print('맞은 개수: {}개'.format(answer_cnt))
         print('accuracy : {0:.3f}% [accuracy = (number_of_answer / number_of_eval_data)]'.format(total_accuracy))
         print('-----evaluating finish-----')
+
+        # save flatten list
+        import pickle
+        with open('result/flatten{}.list'.format(self.model_num), 'wb') as f:
+            pickle.dump(flatten_list, f)
 
         # save learning result
         save_learning_result_to_csv(self.model_num, self.eval_data.get_all_file_names(), actual_labels, pred_labels)

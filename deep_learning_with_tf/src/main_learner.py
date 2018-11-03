@@ -151,3 +151,4 @@ if __name__ == '__main__':
     else:
         run_using_k_fold(model_arg, once_flag=int(config.get('BASIC_INFO', 'KFOLD_ONCE_FLAG')))
     pass
+    print(step)

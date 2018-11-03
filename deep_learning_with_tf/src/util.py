@@ -180,7 +180,7 @@ def save_learning_result_to_csv(step, filenames=None, actuals=None, preds=None):
     #         wr.writerow([name, actual_label, pred_label])
 
     # save result as csv file (only kisa)
-    with open(os.path.join(result_dir, 'kisa{}.csv'.format(step)), 'w', newline='', encoding='utf-8') as f:
+    with open(os.path.join(result_dir, 'DL_kisa{}.csv'.format(step)), 'w', newline='', encoding='utf-8') as f:
         wr = csv.writer(f)
         for name, pred_label in zip(filenames, preds):
             wr.writerow([name, pred_label])

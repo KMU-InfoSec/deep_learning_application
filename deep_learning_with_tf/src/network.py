@@ -40,11 +40,12 @@ def inference_CNN(x, prob, L2_REGULARIZATION_SCALE, train_flag=False):
         conv_layer = tf.nn.leaky_relu(conv_layer)  # tf.nn.relu(conv_layer)
         conv_layer = tf.layers.max_pooling1d(inputs=conv_layer, pool_size=2,
                                              padding='valid', strides=2)
-        # if train_flag:
-        #     conv_layer = tf.nn.dropout(conv_layer, keep_prob=prob)
+        # conv_layer = tf.nn.dropout(conv_layer, keep_prob=prob)
+
+    flatten_layer = tf.layers.flatten(conv_layer)
 
     # classifier
-    dense_layer = tf.layers.flatten(conv_layer)
+    dense_layer = flatten_layer
     for hidden_node in hidden_node_list:
         dense_layer = tf.layers.dense(inputs=dense_layer, units=hidden_node, activation=tf.nn.leaky_relu,
                                       kernel_regularizer=tf.contrib.layers.l2_regularizer(L2_REGULARIZATION_SCALE))
@@ -52,4 +53,4 @@ def inference_CNN(x, prob, L2_REGULARIZATION_SCALE, train_flag=False):
 
     y_ = tf.layers.dense(inputs=dense_layer, units=output_layer_size)
 
-    return y_
+    return y_, flatten_layer
