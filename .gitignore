@@ -4,6 +4,7 @@ doc/
 
 # project result files/directories
 result/
+saver/
 **/*.set
 **/*.txt
 model_storage/
