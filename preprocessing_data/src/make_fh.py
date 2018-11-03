@@ -62,7 +62,10 @@ def normalize_vector(vector):
     max_value = max(vector)
     min_value = min(vector)
 
-    vector = [2 * ((x - min_value) / (max_value - min_value)) - 1 for x in vector]
+    if min_value == max_value:  # 0-vector
+        vector = [0] * MAX_VECTOR_SIZE
+    else:
+        vector = [2 * ((x - min_value) / (max_value - min_value)) - 1 for x in vector]
 
     return vector
 

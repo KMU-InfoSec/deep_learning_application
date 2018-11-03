@@ -17,14 +17,8 @@ if __name__ == '__main__':
     # p.map(make_idb_ops, input_file_lists)
     # print("elapsed time: {}".format(time.time() - start_time))
 
-    # fh
-    # ops_file_list = create_file_list(OPS_PATH)
-    # print("Total OPS Count : {}".format(len(ops_file_list)))
-    # p.map(make_fh, ops_file_list)
-    # print("elapsed time: {}".format(time.time() - start_time))
-
     file_list = create_file_list(FH_INPUT_PATH)
-    print("Total ACS Count : {}".format(len(file_list)))
+    print("Total File Count : {}".format(len(file_list)))
     p.map(make_fh, file_list)
     print("elapsed time: {}".format(time.time() - start_time))
 
