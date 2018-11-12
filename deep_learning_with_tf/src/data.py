@@ -22,36 +22,30 @@ class DataLoader:
         # allocate all data into memory
         print('{} data: set data into memory'.format(mode))
         _cnt = 0
-        mal_data = q.Queue()
-        ben_data = q.Queue()
-        mal_name_list = q.Queue()
-        ben_name_list = q.Queue()
+        mal_data = list()
+        ben_data = list()
+        mal_name_list = list()
+        ben_name_list = list()
 
+        # load data: malware
         for i, path in enumerate(self.mal_paths):
             content = _pickle.load(open(path, 'rb'))
 
             if isinstance(content, dict):  # fhs
                 for k, v in content.items():
                     _cnt += 1
-                    mal_name_list.put(k)
-                    mal_data.put(v)
-                print(path)
+                    mal_name_list.append(k)
+                    mal_data.append(v)
+                print(os.path.basename(path))
             else:
                 _cnt += 1
-                mal_name_list.put(os.path.splitext(os.path.basename(path))[0])
-                mal_data.put(content)
-            # if _cnt % 10000 == 0:
-            #     print('on reading malware: {}'.format(_cnt))
+                mal_name_list.append(os.path.splitext(os.path.basename(path))[0])
+                mal_data.append(content)
+        # load data: benignware
         for i, path in enumerate(self.ben_paths):
             content = _pickle.load(open(path, 'rb'))
-            ben_name_list.put(os.path.splitext(os.path.basename(path))[0])
-            ben_data.put(content)
-        mal_data = list(mal_data.queue); ben_data = list(ben_data.queue)
-        mal_name_list = list(mal_name_list.queue); ben_name_list = list(ben_name_list.queue)
-
-        self.no_mal_data = len(mal_name_list)
-        self.no_ben_data = len(ben_name_list)
-        self.number_of_data = self.no_mal_data + self.no_ben_data
+            ben_name_list.append(os.path.splitext(os.path.basename(path))[0])
+            ben_data.append(content)
 
         # set label data
         print('{} data: set label'.format(mode))
@@ -60,29 +54,66 @@ class DataLoader:
             ben_label = [0 for _ in ben_name_list]
         else:
             label_dict = dict()
-            with open(self.label_paths, 'r') as f:
-                rdr = csv.reader(f)
 
-                # toy dataset label
-                LABEL_TO_INT = {'Virus': 0, 'Worm': 1, 'Trojan': 2, 'not-a-virus:Downloader': 3,
-                                'Trojan-Ransom': 4, 'Backdoor': 5}
-                for line in rdr:
-                    if int(line[1]) == 1:
-                        md5, label = line[0], LABEL_TO_INT[line[2]]
-                        label_dict[md5] = label
+            if os.path.isdir(self.label_paths):  # label 파일들이 특정 폴더에 있는 경우
+                for path, _, files in os.walk(self.label_paths):
+                    for file in files:
+                        ext = os.path.splitext(file)[-1]
+                        if ext == '.csv':
+                            with open(os.path.join(path, file), 'r') as f:
+                                for line in csv.reader(f):
+                                    md5, label = line[0], int(line[2])
+                                    label_dict[md5] = label
+                else:
+                    mal_label = [label_dict.get(mal_name, -1) for mal_name in mal_name_list]
+                    ben_label = list()
+            else:
+                with open(self.label_paths, 'r') as f:
+                    rdr = csv.reader(f)
+
+                    # toy dataset label
+                    LABEL_TO_INT = {'Virus': 0, 'Worm': 1, 'Trojan': 2, 'not-a-virus:Downloader': 3,
+                                    'Trojan-Ransom': 4, 'Backdoor': 5}
+                    for line in rdr:
+                        if int(line[1]) == 1:
+                            md5, label = line[0], LABEL_TO_INT[line[2]]
+                            label_dict[md5] = label
                     else:
-                        continue
-
-                mal_label = [label_dict[mal_name] for mal_name in mal_name_list]
-                ben_label = list()
-                pass
+                        mal_label = [label_dict.get(mal_name, -1) for mal_name in mal_name_list]
+                        ben_label = list()
 
         # make (data:label) dictionary
+        print('{} data: make data dictionary'.format(mode))
         self.mal_data_dict = dict(zip(mal_name_list, mal_data))
         self.mal_label_dict = dict(zip(mal_name_list, mal_label))
         self.ben_data_dict = dict(zip(ben_name_list, ben_data))
         self.ben_label_dict = dict(zip(ben_name_list, ben_label))
 
+        # remove wrong data/label
+        print('{} data: remove wrong data/label'.format(mode))
+        md5_del_list = list()
+        for mal_name in self.mal_label_dict:
+            if self.mal_label_dict[mal_name] == -1:
+                try:
+                    del self.mal_data_dict[mal_name]
+                    md5_del_list.append(mal_name)
+                except:
+                    pass
+        else:
+            for md5 in md5_del_list:
+                try:
+                    del self.mal_label_dict[md5]
+                except:
+                    pass
+
+        del mal_name_list, mal_data, ben_name_list, ben_data, mal_label, ben_label
+
+        mal_name_list = list(self.mal_label_dict.keys())
+        ben_name_list = list(self.ben_label_dict.keys())
+
+        self.no_mal_data = len(mal_name_list)
+        self.no_ben_data = len(ben_name_list)
+        self.number_of_data = self.no_mal_data + self.no_ben_data
         self.all_name_list = mal_name_list + ben_name_list
 
         # set batch size

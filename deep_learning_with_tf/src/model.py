@@ -54,7 +54,7 @@ class KISNet:
             self.y_one_hot = tf.one_hot(self.y, self.output_layer_size, dtype=tf.int32, name='y_one-hot')
             self.lr = tf.placeholder(tf.float32)
 
-            # predict
+            self.y_prob = tf.nn.softmax(self.y_)
             self.y_pred = tf.argmax(self.y_, 1)
             self.y_true = tf.argmax(self.y_one_hot, 1)
             self.prediction = tf.equal(self.y_pred, self.y_true)
@@ -64,12 +64,14 @@ class KISNet:
         pass
 
     def get_model_snapshot_path(self):
+        retrain_flag = True
         # create model storage
         model_storage = self.model_snapshot_name + str(self.model_num)
         if not os.path.isdir(model_storage):
             os.makedirs(model_storage)
+            retrain_flag = False
 
-        return os.path.normpath(os.path.abspath('./{}/model.ckpt'.format(model_storage)))
+        return os.path.normpath(os.path.abspath('./{}/model.ckpt'.format(model_storage))), retrain_flag
 
     def inference(self):
         if self.network_type == 'ANN':
@@ -95,22 +97,11 @@ class KISNet:
             return self.train_learning_rate
 
     def train(self):
-        if self.class_type == 'binary':
-            self.train_data = data.DataLoader(self.mal_path[self.indices[0][0]], self.ben_path[self.indices[1][0]],
-                                              self.label_path, batch_size=self.batch_size, epoch=self.train_epoch,
-                                              mode='train')
-        else:
-            self.train_data = data.DataLoader(self.mal_path[self.indices[0]], list(), self.label_path,
-                                              batch_size=self.batch_size, epoch=self.train_epoch, mode='train')
-        # eval data for kisa
-        if self.class_type == 'binary':
-            self.eval_data = data.DataLoader(self.mal_path[self.indices[0][1]], self.ben_path[self.indices[1][1]],
-                                             self.label_path, batch_size=self.batch_size, epoch=self.train_epoch,
-                                             mode='evaluate')
-        else:
-            self.eval_data = data.DataLoader(self.mal_path[self.indices[1]], list(), self.label_path,
-                                             batch_size=self.batch_size, epoch=self.train_epoch, mode='evaluate')
-
+        # load data
+        self.train_data = data.DataLoader(self.mal_path[self.indices[0][0]],
+                                          self.ben_path[self.indices[1][0]] if self.class_type == 'binary' else list(),
+                                          self.label_path, batch_size=self.batch_size, epoch=self.train_epoch,
+                                          mode='train')
         print('@ training start')
         self.train_flag = True
 
@@ -130,7 +121,7 @@ class KISNet:
                 optimizer = tf.train.AdamOptimizer(self.lr).minimize(cost)
 
         # create model snapshot
-        model_path = self.get_model_snapshot_path()
+        model_path, retrain_flag = self.get_model_snapshot_path()
 
         # training session start
         model_saver = tf.train.Saver()
@@ -140,6 +131,10 @@ class KISNet:
 
         with tf.Session(config=tf_config) as sess:
             sess.run(init)
+
+            if retrain_flag:
+                model_saver.restore(sess, model_path)
+                print('재학습모드')
 
             number_of_data = len(self.train_data)
             print('training file # : {}'.format(number_of_data))
@@ -158,8 +153,8 @@ class KISNet:
                         ))
 
                     if iteration % 100 == 0:
-                        pass
                         model_saver.save(sess, model_path)
+                        pass
                 else:  # epoch finish
                     pass
                     # temp_acc = self.evaluate_epoch_compare(sess, notice['epoch'])
@@ -175,13 +170,6 @@ class KISNet:
         pass
 
     def evaluate_epoch_compare(self, sess, epoch):
-        # if self.class_type == 'binary':
-        #     self.eval_data = data.DataLoader(self.mal_path[self.indices[0][1]], self.ben_path[self.indices[1][1]],
-        #                                      self.label_path, batch_size=self.batch_size, epoch=self.train_epoch,
-        #                                      mode='evaluate')
-        # else:
-        #     self.eval_data = data.DataLoader(self.mal_path[self.indices[1]], list(), self.label_path,
-        #                                      batch_size=self.batch_size, epoch=self.train_epoch, mode='evaluate')
         answer_cnt = 0
         number_of_data = len(self.eval_data)
 
@@ -189,29 +177,23 @@ class KISNet:
             try:
                 acc_cnt = sess.run(self.acc_cnt, feed_dict={self.x: eval_data, self.y: eval_label})
                 answer_cnt += int(acc_cnt)
-            except Exception as e:
-                # print(e)
+            except:
                 pass
 
         total_accuracy = float(100. * (answer_cnt / number_of_data))
         print('@ [epoch {0}] accuracy : {1:.3f}'.format(epoch, total_accuracy))
-        # del self.eval_data
         return total_accuracy
 
     def evaluate(self):
-        # if self.class_type == 'binary':
-        #     self.eval_data = data.DataLoader(self.mal_path[self.indices[0][1]], self.ben_path[self.indices[1][1]],
-        #                                      self.label_path, batch_size=self.batch_size, epoch=self.train_epoch,
-        #                                      mode='evaluate')
-        # else:
-        #     self.eval_data = data.DataLoader(self.mal_path[self.indices[1]], list(), self.label_path,
-        #                                      batch_size=self.batch_size, epoch=self.train_epoch, mode='evaluate')
-
+        self.eval_data = data.DataLoader(self.mal_path[self.indices[0][1]],
+                                         self.ben_path[self.indices[1][1]] if self.class_type == 'binary' else list(),
+                                         self.label_path, batch_size=self.batch_size, epoch=self.train_epoch,
+                                         mode='evaluate')
         print('@ evaluating start')
         self.train_flag = False
 
         # restore model snapshot
-        model_path = self.get_model_snapshot_path()
+        model_path, _ = self.get_model_snapshot_path()
 
         # start evaluating session
         model_saver = tf.train.Saver()
@@ -225,6 +207,8 @@ class KISNet:
 
             answer_cnt = 0
             flatten_list = list()
+            mal_probs = list()  # 파일에 대해 얼마나 악성이라고 생각하는지?
+
             number_of_data = len(self.eval_data)
             print('evaluating file # : {}'.format(number_of_data))
 
@@ -232,14 +216,16 @@ class KISNet:
             for iteration, (eval_data, eval_label) in enumerate(self.eval_data):
                 no_eval_data = len(eval_label)
                 try:
-                    pred_label, actual_label, acc_cnt, flatten = sess.run(
-                        [self.y_pred, self.y_true, self.acc_cnt, self.flatten],
+                    pred_label, actual_label, acc_cnt, flatten, y_prob = sess.run(
+                        [self.y_pred, self.y_true, self.acc_cnt, self.flatten, self.y_prob],
                         feed_dict={self.x: eval_data, self.y: eval_label})
                     answer_cnt += int(acc_cnt)
-                    flatten_list.append(flatten)
+
+                    # flatten_list += flatten.tolist()
+                    # mal_probs += y_prob[:, 1].tolist()
 
                     if iteration and iteration % 10 == 0:
-                        _i = iteration * no_eval_data
+                        _i = (iteration+1) * no_eval_data
                         print('[{i}/{total}] acc: {acc:.4f} / elapsed time: {time:.3f}'.format(
                             i=_i, total=number_of_data, acc=(answer_cnt/_i),
                             time=time.time()-eval_time
@@ -259,12 +245,13 @@ class KISNet:
         print('-----evaluating finish-----')
 
         # save flatten list
-        import pickle
-        with open('result/flatten{}.list'.format(self.model_num), 'wb') as f:
-            pickle.dump(flatten_list, f)
+        # import pickle
+        # with open('result/flatten{}.list'.format(self.model_num), 'wb') as f:
+        #     pickle.dump(flatten_list, f)
 
         # save learning result
-        save_learning_result_to_csv(self.model_num, self.eval_data.get_all_file_names(), actual_labels, pred_labels)
+        # save_result_to_csv(self.model_num, self.eval_data.get_all_file_names(), actual_labels, pred_labels,
+        #                    mal_probs)
 
         # plot confusion matrix
         plot_confusion_matrix(self.model_num, actual_labels, pred_labels, self.output_layer_size)

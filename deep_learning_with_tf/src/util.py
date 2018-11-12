@@ -113,7 +113,12 @@ def plot_confusion_matrix(step, y_true, y_pred, output_size):
         labels = ['benign', 'malware']
     else:
         # toy dataset label
-        labels = ['Virus', 'Worm', 'Trojan', 'not-a-virus:Downloader', 'Trojan-Ransom', 'Backdoor']
+        # labels = ['Virus', 'Worm', 'Trojan', 'not-a-virus:Downloader', 'Trojan-Ransom', 'Backdoor']
+        labels = list(range(output_size))
+    tick_marks = np.arange(len(labels))
+    plt.xticks(tick_marks, labels, rotation=90)
+    plt.xticks(tick_marks, labels)
+    plt.yticks(tick_marks, labels)
 
     norm_flag = True
     plot_title = 'Confusion matrix'
@@ -124,24 +129,21 @@ def plot_confusion_matrix(step, y_true, y_pred, output_size):
         print("Normalized confusion matrix")
     else:
         print('Confusion matrix, without normalization')
+    print(cnf_matrix)
 
     # plotting start
     plt.figure()
     plt.imshow(cnf_matrix, interpolation='nearest', cmap=cmap)
     plt.title(plot_title)
     plt.colorbar()
-    tick_marks = np.arange(len(labels))
-    plt.xticks(tick_marks, labels, rotation=90)
-    plt.xticks(tick_marks, labels)
-    plt.yticks(tick_marks, labels)
 
     # information about each block's value
-    fmt = '.3f' if norm_flag else 'd'
-    thresh = cnf_matrix.max() / 2.
-    for i, j in itertools.product(range(cnf_matrix.shape[0]), range(cnf_matrix.shape[1])):
-        plt.text(j, i, format(cnf_matrix[i, j], fmt),
-                 horizontalalignment="center",
-                 color="white" if cnf_matrix[i, j] > thresh else "black")
+    # fmt = '.3f' if norm_flag else 'd'
+    # thresh = cnf_matrix.max() / 2.
+    # for i, j in itertools.product(range(cnf_matrix.shape[0]), range(cnf_matrix.shape[1])):
+    #     plt.text(j, i, format(cnf_matrix[i, j], fmt),
+    #              horizontalalignment="center",
+    #              color="white" if cnf_matrix[i, j] > thresh else "black")
 
     ## insert legend information
     # import matplotlib.patches as mpatches
@@ -158,7 +160,7 @@ def plot_confusion_matrix(step, y_true, y_pred, output_size):
 
 
 # function:
-def save_learning_result_to_csv(step, filenames=None, actuals=None, preds=None):
+def save_result_to_csv(step, filenames, actuals, preds, mal_probs):
     # check result directory
     result_dir = 'result'
     check_existing_dir(result_dir)
@@ -180,10 +182,11 @@ def save_learning_result_to_csv(step, filenames=None, actuals=None, preds=None):
     #         wr.writerow([name, actual_label, pred_label])
 
     # save result as csv file (only kisa)
-    with open(os.path.join(result_dir, 'DL_kisa{}.csv'.format(step)), 'w', newline='', encoding='utf-8') as f:
+    with open(os.path.join(result_dir, 'a.csv'), 'w', newline='', encoding='utf-8') as f:
         wr = csv.writer(f)
-        for name, pred_label in zip(filenames, preds):
-            wr.writerow([name, pred_label])
+        for name, pred in zip(filenames, preds):
+            # wr.writerow([name, pred, real, mal_prob])
+            wr.writerow([name, pred])
 
     # save result that gets wrong cases as csv file
     # with open(os.path.join(result_dir, 'profiling{}.csv'.format(step)), 'w', newline='', encoding='utf-8') as f:
@@ -244,7 +247,7 @@ def split_train_test_data(class_type, mal_path, ben_path, mal_train_start_date, 
             mal_test_indices.append(cnt)
 
     # 정상파일 경로를 받아오고, 비율에 따라 학습/테스트 셋을 분류
-    ben_data = np.array(walk_dir(ben_path, ext)) if class_type == 'BINARY' else list()
+    ben_data = np.array(walk_dir(ben_path, ext)) if class_type == 'binary' else list()
     ben_total_indices = np.arange(len(ben_data)); random.shuffle(ben_total_indices)
     ben_ratio_a, ben_ratio_b = ben_ratio.split(':')
     ben_ratio_number = int(ben_ratio_a)/(int(ben_ratio_a)+int(ben_ratio_b))
@@ -253,7 +256,7 @@ def split_train_test_data(class_type, mal_path, ben_path, mal_train_start_date, 
 
     result_indices = list()
     result_indices.append((np.asarray(mal_train_indices), np.asarray(mal_test_indices)))
-    if class_type == 'BINARY':
+    if class_type == 'binary':
         result_indices.append((ben_train_indices, ben_test_indices))
 
     return mal_data, ben_data, result_indices

@@ -19,7 +19,7 @@ if __name__ == '__main__':
 
     file_list = create_file_list(FH_INPUT_PATH)
     print("Total File Count : {}".format(len(file_list)))
-    p.map(make_fh, file_list)
+    feature_list = p.map(make_fh, file_list)
     print("elapsed time: {}".format(time.time() - start_time))
-
+    print('{0} {1} {2} {3}'.format(FILE_CLASS, FH_TYPE, N_GRAM, MAX_VECTOR_SIZE))
     pass

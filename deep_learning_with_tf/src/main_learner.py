@@ -10,8 +10,9 @@ config.read('config.ini')
 
 
 def run_WINS(model_dic):
-    mal_data, ben_data, indices = split_train_test_data(CLASS_TYPE, mal_path=model_dic['mal_dir'], ben_path=model_dic['ben_dir'],
-                                                        mal_train_start_date='20170802', mal_train_end_date='20170831',
+    mal_data, ben_data, indices = split_train_test_data(class_type=model_dic['class_type'],
+                                                        mal_path=model_dic['mal_dir'], ben_path=model_dic['ben_dir'],
+                                                        mal_train_start_date='20170802', mal_train_end_date='20170930',
                                                         mal_test_start_date='20171001', mal_test_end_date='20171029',
                                                         ben_ratio='4:1', ext=model_dic['fh_type'],
                                                         fhs_flag=model_dic['fhs_flag'])
@@ -34,10 +35,11 @@ def run_WINS(model_dic):
 
 def run_KISA(model_dic):
     # data
-    train_mal_data = np.array(walk_dir(model_dic['mal_dir'], model_dic['fh_type']))
-    train_ben_data = np.array(walk_dir(model_dic['ben_dir'], model_dic['fh_type']))
+    # train_mal_data = np.array(walk_dir(model_dic['mal_dir'], model_dic['fh_type']))
+    # train_ben_data = np.array(walk_dir(model_dic['ben_dir'], model_dic['fh_type']))
     test_file_path = config.get('PATH', 'TEST_DIR')
     label_path = model_dic['label_path']
+    train_mal_data, train_ben_data = read_kisa_data(test_file_path, label_path, model_dic['fh_type'])
     test_mal_data, test_ben_data = read_kisa_data(test_file_path, label_path, model_dic['fh_type'])
 
     mal_data = np.concatenate((train_mal_data, test_mal_data))
@@ -64,7 +66,7 @@ def run_KISA(model_dic):
     model_dic['indices'] = indices
 
     classifier = KISNet(model_num=step, model_dic=model_dic)
-    classifier.train()
+    # classifier.train()
     classifier.evaluate()
 
 
@@ -132,6 +134,7 @@ if __name__ == '__main__':
         'data_type': config.get('BASIC_INFO', 'DATA_TYPE'),
         'epoch': int(config.get('CLASSIFIER', 'EPOCH')),
         'fh_type': config.get('BASIC_INFO', 'INPUT_FILE_TYPE'),
+        'fhs_flag': int(config.get('BASIC_INFO', 'FHS_FLAG')),
         'gpu_num': int(config.get('CLASSIFIER', 'GPU_NUM')),
         'keep_prob': float(1 - float(config.get('CLASSIFIER', 'DROPOUT_PROB'))),
         'label_path': config.get('PATH', 'LABEL_FILE'),
@@ -151,4 +154,3 @@ if __name__ == '__main__':
     else:
         run_using_k_fold(model_arg, once_flag=int(config.get('BASIC_INFO', 'KFOLD_ONCE_FLAG')))
     pass
-    print(step)

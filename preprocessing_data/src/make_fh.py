@@ -149,16 +149,12 @@ def make_fh(file_path):
             print('{} existed'.format(file_name))
             return
 
-    # make feature hashing vector
-    ops_set = set()
-
     # 성능 검증을 위한 집합 자료형
-    analysis_flag = ANALYSIS_FLAG
-    if analysis_flag:
-        ops_set = set()
-        fh_ops_map = dict()  # 어떤 ops가 어떤 index에 맵핑되었는지 확인
-        for i in range(MAX_VECTOR_SIZE):
-            fh_ops_map[i] = set()
+    ops_set = set()
+    # if analysis_flag:
+    #     fh_ops_map = dict()  # 어떤 ops가 어떤 index에 맵핑되었는지 확인
+    #     for i in range(MAX_VECTOR_SIZE):
+    #         fh_ops_map[i] = set()
 
     # step 1. load input file (pickle format)
     try:
@@ -206,6 +202,9 @@ def make_fh(file_path):
         # step 3-4. apply the value to the vector
         apply_feature_value(fh_vector, index, decision_sign, decision_content)
 
+        if ANALYSIS_FLAG:
+            ops_set.add(window)
+
         # step 3-5. iterate previous step
         for i in range(N_GRAM, no_content):
             # step 3-5-2. get window
@@ -214,6 +213,9 @@ def make_fh(file_path):
             index, decision_sign, decision_content = get_vector_index(window)
             # step 3-5-4. apply the value to the vector
             apply_feature_value(fh_vector, index, decision_sign, decision_content)
+
+            if ANALYSIS_FLAG:
+                ops_set.add(window)
     # ------------------------------------------------------------------------------------- #
     elif GRAM_TYPE == 'v':  # fops, bops
         if OPS_TYPE == 'b':
@@ -227,9 +229,9 @@ def make_fh(file_path):
                 # step 3-3. apply the value to the vector
                 apply_feature_value(fh_vector, index, decision_sign, decision_content)
 
-                if analysis_flag:
+                if ANALYSIS_FLAG:
                     ops_set.add(window)
-                    fh_ops_map[index].add(window)
+                    # fh_ops_map[index].add(window)
 
         elif OPS_TYPE == 'f':
             for func_xor_value in function_xor_generator(content):
@@ -248,8 +250,8 @@ def make_fh(file_path):
     fh_vector = normalize_vector(fh_vector)
 
     # make log file
-    if analysis_flag:
-        analyze(file_name, ops_set, fh_ops_map, fh_vector)
+    # if ANALYSIS_FLAG:
+    #     analyze(file_name, ops_set, fh_ops_map, fh_vector)
 
     # save file
     if SAVE_FH_FLAG:
@@ -257,7 +259,7 @@ def make_fh(file_path):
             pickle.dump(fh_vector, f)
 
     print('{0} fh finished'.format(file_name))
-    return 0
+    return list(ops_set)
 
 
 if __name__ == '__main__':
