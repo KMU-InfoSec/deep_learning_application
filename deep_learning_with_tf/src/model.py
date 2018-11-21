@@ -7,7 +7,7 @@ from util import *
 
 
 class KISNet:
-    def __init__(self, model_num, model_dic):
+    def __init__(self, model_num, model_dic, model_reuse_flag=True):
         '''
             init deep learning environment variable
         '''
@@ -61,7 +61,19 @@ class KISNet:
             self.pred_cast = tf.cast(self.prediction, tf.float32)
             self.acc_cnt = tf.reduce_sum(self.pred_cast)
             self.accuracy = tf.reduce_mean(self.pred_cast)
+
+        if not model_reuse_flag:
+            self._delete_model_snapshot()
+
         pass
+
+    def _delete_model_snapshot(self):
+        model_storage = self.model_snapshot_name + str(self.model_num)
+        if os.path.isdir(model_storage):
+            print('@ delete current model (REUSE_FLAG = FALSE)')
+            import shutil
+            shutil.rmtree(model_storage)
+        return True
 
     def get_model_snapshot_path(self):
         retrain_flag = True
@@ -250,11 +262,11 @@ class KISNet:
         #     pickle.dump(flatten_list, f)
 
         # save learning result
-        # save_result_to_csv(self.model_num, self.eval_data.get_all_file_names(), actual_labels, pred_labels,
-        #                    mal_probs)
+        save_result_to_csv(self.model_num, self.eval_data.get_all_file_names(), actual_labels, pred_labels,
+                           mal_probs)
 
         # plot confusion matrix
-        plot_confusion_matrix(self.model_num, actual_labels, pred_labels, self.output_layer_size)
+        # plot_confusion_matrix(self.model_num, actual_labels, pred_labels, self.output_layer_size)
         del self.eval_data
 
         return total_accuracy

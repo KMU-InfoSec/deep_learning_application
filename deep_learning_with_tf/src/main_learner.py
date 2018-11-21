@@ -86,7 +86,8 @@ def run_using_k_fold(model_dic, once_flag):
     if CLASS_TYPE == 'binary':
         cv_split_obj = zip(cv.split(mal_data), cv.split(ben_data))
     else:
-        cv_split_obj = cv.split(mal_data)
+        cv_mal_obj = cv.split(mal_data)
+        cv_split_obj = zip(cv_mal_obj, np.asarray([list() for _ in range(k_fold_value)]))
 
     acc_list = list()
     for idx, indices in enumerate(cv_split_obj):
@@ -98,7 +99,7 @@ def run_using_k_fold(model_dic, once_flag):
         model_dic['ben_path'] = ben_data
         model_dic['indices'] = indices
 
-        classifier = KISNet(model_num=step, model_dic=model_dic)
+        classifier = KISNet(model_num=step, model_dic=model_dic, model_reuse_flag=False)
         classifier.train()
         acc = classifier.evaluate()
         if once_flag:

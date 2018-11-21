@@ -16,8 +16,12 @@ class DataLoader:
         # initialize member variable
         self.mal_paths = mal_paths
         self.ben_paths = ben_paths
-        self.file_paths = np.concatenate((self.mal_paths, self.ben_paths), axis=0)
         self.label_paths = label_paths
+
+        if self.class_type == 'binary':
+            self.file_paths = np.concatenate((self.mal_paths, self.ben_paths), axis=0)
+        else:
+            self.file_paths = self.mal_paths
 
         # allocate all data into memory
         print('{} data: set data into memory'.format(mode))

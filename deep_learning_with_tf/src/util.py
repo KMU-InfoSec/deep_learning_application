@@ -129,7 +129,11 @@ def plot_confusion_matrix(step, y_true, y_pred, output_size):
         print("Normalized confusion matrix")
     else:
         print('Confusion matrix, without normalization')
-    print(cnf_matrix)
+
+    for row in cnf_matrix:
+        for val in row:
+            print('{0:.2f}'.format(val), end=' ')
+        print()
 
     # plotting start
     plt.figure()
