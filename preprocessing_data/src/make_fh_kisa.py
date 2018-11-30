@@ -1,9 +1,9 @@
 import hashlib
-import pickle
+import json, pickle
 
 from settings import *
 
-OPS_TYPE, GRAM_TYPE, VALUE_TYPE = FH_TYPE[3], FH_TYPE[5], FH_TYPE[6]
+OPS_TYPE, FEATURE_TYPE, GRAM_TYPE, VALUE_TYPE = FH_TYPE[3], FH_TYPE[4], FH_TYPE[5], FH_TYPE[6]
 
 
 def exist_dirs(file_path):
@@ -132,7 +132,7 @@ def analyze(file_name, ops_set, fh_ops_map, fh_vector):
     pass
 
 
-def make_fh(file_path):
+def make_fh_kisa(file_path):
     # define file path
     file_name, ext = os.path.splitext(os.path.split(file_path)[-1])
     file_name = file_name + '.{}'.format(FH_TYPE)
@@ -155,15 +155,31 @@ def make_fh(file_path):
     #     for i in range(MAX_VECTOR_SIZE):
     #         fh_ops_map[i] = set()
 
-    # step 1. load input file (pickle format)
+    # step 1. load input file (json format)
     try:
-        with open(file_path, 'rb') as f:
-            content = pickle.load(f)
+        with open(file_path, 'r') as f:
+            content = json.load(f)
         if len(content) == 0:
-            print('@ null ops: {}'.format(file_name))
+            print('@ null file: {}'.format(file_name))
+            return
+
+        try:
+            if FEATURE_TYPE == 's':  # string
+                content = content['string']
+            elif FEATURE_TYPE == 'o':  # opcode
+                content = content['opcode']
+            else:
+                print('@ no feature selection: {}'.format(file_name))
+                return
+
+            if len(content) == 0:
+                print('@ null feature: {}'.format(file_name))
+                return
+        except:
+            print('@ wrong json key value: {}'.format(file_name))
             return
     except:
-        print('@ not pickled: {}'.format(file_name))
+        print('@ not opened: {}'.format(file_name))
         return
 
     # step 2. initialize feature vector
@@ -266,7 +282,5 @@ def make_fh(file_path):
 
 if __name__ == '__main__':
     _base_path = r'D:\working_board\dataset_kisa\benignware\str\strings_ahnlab\0000b97b3322e5792f8c88e01b4f4313.str'
-
-    make_fh(_base_path)
     pass
 
