@@ -1,9 +1,8 @@
 import csv
 import numpy as np
 import os
-import _pickle
+import pickle
 import random
-import queue as q
 
 
 class DataLoader:
@@ -18,14 +17,10 @@ class DataLoader:
         self.ben_paths = ben_paths
         self.label_paths = label_paths
 
-        if self.class_type == 'binary':
-            self.file_paths = np.concatenate((self.mal_paths, self.ben_paths), axis=0)
-        else:
-            self.file_paths = self.mal_paths
+        self.file_paths = np.concatenate((self.mal_paths, self.ben_paths), axis=0) if self.class_type == 'binary' else self.mal_paths
 
         # allocate all data into memory
         print('{} data: set data into memory'.format(mode))
-        _cnt = 0
         mal_data = list()
         ben_data = list()
         mal_name_list = list()
@@ -33,25 +28,30 @@ class DataLoader:
 
         # load data: malware
         for i, path in enumerate(self.mal_paths):
-            content = _pickle.load(open(path, 'rb'))
+            try:
+                content = pickle.load(open(path, 'rb'))
+            except:
+                print('cannot load data: {}'.format(path))
+                continue
 
             if isinstance(content, dict):  # fhs
                 for k, v in content.items():
-                    _cnt += 1
                     mal_name_list.append(k)
                     mal_data.append(v)
-                print(os.path.basename(path))
             else:
-                _cnt += 1
                 mal_name_list.append(os.path.splitext(os.path.basename(path))[0])
                 mal_data.append(content)
         # load data: benignware
         for i, path in enumerate(self.ben_paths):
-            content = _pickle.load(open(path, 'rb'))
+            try:
+                content = pickle.load(open(path, 'rb'))
+            except:
+                print('cannot load data: {}'.format(path))
+                continue
             ben_name_list.append(os.path.splitext(os.path.basename(path))[0])
             ben_data.append(content)
 
-        # set label data
+        # set label
         print('{} data: set label'.format(mode))
         if self.class_type == 'binary':  # BINARY
             mal_label = [1 for _ in mal_name_list]

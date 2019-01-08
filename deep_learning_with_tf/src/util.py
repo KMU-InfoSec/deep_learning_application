@@ -1,3 +1,4 @@
+import configparser
 from data import *
 import datetime
 import itertools
@@ -7,6 +8,11 @@ import os
 import _pickle
 import random
 from sklearn.metrics import confusion_matrix
+
+
+# config parameters
+config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
+config.read('realconfig.ini')
 
 
 # function: 입력 파일의 이름을 md5로 바꿔주는 함수
@@ -70,6 +76,16 @@ def convert_vir_to_bin(input_dir):
     pass
 
 
+# function: 입력 디렉토리가 존재하는지 확인하는 함수
+def check_existing_dir(file_path):
+    if not os.path.exists(os.path.normpath(os.path.abspath(file_path))):
+        try:
+            os.makedirs(file_path)
+        except:
+            pass
+    pass
+
+
 # function: 입력 파일에 대한 md5 hash value를 16진수로 반환하는 함수
 def get_md5(path, block_size=8192):
     with open(path, 'rb') as f:
@@ -81,14 +97,17 @@ def get_md5(path, block_size=8192):
     return hasher.hexdigest()
 
 
-# function: 입력 디렉토리가 존재하는지 확인하는 함수
-def check_existing_dir(file_path):
-    if not os.path.exists(os.path.normpath(os.path.abspath(file_path))):
-        try:
-            os.makedirs(file_path)
-        except:
-            pass
-    pass
+# function: 시작일과 종료일 사이에 있는 모든 날짜를 반환하는 함수
+def get_range_dates(start_date, end_date):
+    date_form = '%Y%m%d'
+    s = datetime.datetime.strptime(start_date, date_form).date()
+    d = datetime.datetime.strptime(end_date, date_form).date()
+
+    result_date = set()
+    for day in range((d-s).days + 1):
+        result_date.add((s + datetime.timedelta(days=day)).strftime(date_form))
+
+    return result_date
 
 
 # function: 학습 모델의 예측 결과와 ground truth를 입력으로 받아 혼동 행렬를 그려주는 함수
@@ -142,14 +161,14 @@ def plot_confusion_matrix(step, y_true, y_pred, output_size):
     plt.colorbar()
 
     # information about each block's value
-    # fmt = '.3f' if norm_flag else 'd'
-    # thresh = cnf_matrix.max() / 2.
-    # for i, j in itertools.product(range(cnf_matrix.shape[0]), range(cnf_matrix.shape[1])):
-    #     plt.text(j, i, format(cnf_matrix[i, j], fmt),
-    #              horizontalalignment="center",
-    #              color="white" if cnf_matrix[i, j] > thresh else "black")
+    fmt = '.3f' if norm_flag else 'd'
+    thresh = cnf_matrix.max() / 2.
+    for i, j in itertools.product(range(cnf_matrix.shape[0]), range(cnf_matrix.shape[1])):
+        plt.text(j, i, format(cnf_matrix[i, j], fmt),
+                 horizontalalignment="center",
+                 color="white" if cnf_matrix[i, j] > thresh else "black")
 
-    ## insert legend information
+    # insert legend information
     # import matplotlib.patches as mpatches
     # patches = [mpatches.Patch(color='white', label='G{num} = {group}'.format(num=i+1, group=labels[i])) for i in range(len(labels))]
     # plt.legend(handles=patches, bbox_to_anchor=(-0.60, 1), loc=2, borderaxespad=0.)
@@ -163,6 +182,27 @@ def plot_confusion_matrix(step, y_true, y_pred, output_size):
     pass
 
 
+def read_test_data(test_file_path, label_path, fh_type):
+    label_dict = dict()
+    with open(label_path, 'r', encoding='utf-8') as f:
+        rdr = csv.reader(f)
+        for line in rdr:
+            file_name, label = line[0].replace('.vir', '.{}'.format(fh_type)), int(line[1])
+            label_dict[file_name] = label
+
+    mal_data_path = list()
+    ben_data_path = list()
+    for (file_name, label) in label_dict.items():
+        full_path = os.path.join(test_file_path, file_name)
+        if os.path.exists(full_path):
+            if label == 0:  # benignware
+                ben_data_path.append(full_path)
+            else:
+                mal_data_path.append(full_path)
+
+    return np.array(mal_data_path), np.array(ben_data_path)
+
+
 # function:
 def save_result_to_csv(step, filenames, actuals, preds, mal_probs):
     # check result directory
@@ -172,25 +212,24 @@ def save_result_to_csv(step, filenames, actuals, preds, mal_probs):
     # delete upper directory
     filenames = [filename.split(os.sep)[-1] for filename in filenames]
 
-    # save result as pickle file
-    # if not (filenames is None and actuals is None and preds is None):
-    #     with open(os.path.join(result_dir, 'learning_result{}.pickle'.format(step)), 'wb') as f:
-    #         _pickle.dump(filenames, f)
-    #         _pickle.dump(actuals, f)
-    #         _pickle.dump(preds, f)
-
-    # save result as csv file
-    # with open(os.path.join(result_dir, 'learning_result{}.csv'.format(step)), 'w', newline='', encoding='utf-8') as f:
-    #     wr = csv.writer(f)
-    #     for name, actual_label, pred_label in zip(filenames, actuals, preds):
-    #         wr.writerow([name, actual_label, pred_label])
-
-    # save result as csv file (only kisa)
-    with open(os.path.join(result_dir, 'a.csv'), 'w', newline='', encoding='utf-8') as f:
+    # save result as csv file to SEEK
+    with open(os.path.join(result_dir, 'inference{}.csv'.format(step)), 'w', newline='', encoding='utf-8') as f:
         wr = csv.writer(f)
-        for name, pred in zip(filenames, preds):
-            # wr.writerow([name, pred, real, mal_prob])
-            wr.writerow([name, pred])
+        wr.writerow(['md5', 'prob'])  # 확률
+        # wr.writerow(['md5', 'label'])  # 라벨
+        for name, pred_label, mal_prob in zip(filenames, preds, mal_probs):
+            wr.writerow([name, '{0:.4f}'.format(mal_prob)])  # 확률
+            # wr.writerow([name, pred_label])  # 라벨
+        else:  # 딥러닝이 맞추지 못한 걸 csv file에 추가해야 한다.
+            # load test file names
+            test_file_md5_set = set()
+            with open(config.get('PATH', 'LABEL_FILE'), 'r', encoding='utf-8') as f:
+                for line in csv.reader(f):
+                    md5, label = line[0].replace('.vir', ''), int(line[1])
+                    test_file_md5_set.add(md5)
+            for test_file_md5 in test_file_md5_set:
+                if not test_file_md5 in filenames:
+                    wr.writerow([test_file_md5, 0.5])  # 확률
 
     # save result that gets wrong cases as csv file
     # with open(os.path.join(result_dir, 'profiling{}.csv'.format(step)), 'w', newline='', encoding='utf-8') as f:
@@ -201,36 +240,8 @@ def save_result_to_csv(step, filenames, actuals, preds, mal_probs):
     pass
 
 
-# function: 입력 경로에 대한 모든 파일 경로를 리스트로 반환하는 함수
-def walk_dir(input_path, ext):
-    print('@ walk dir start')
-    result = list()
-    for path, dirs, files in os.walk(input_path):
-        if len(dirs) == 0:
-            print(path)
-            for file in files:
-                if ext == os.path.splitext(file)[-1][1:]:
-                    file_path = os.path.join(path, file)  # store "file path"
-                    result.append(file_path)
-    print('@ walk dir finish')
-    return result
-
-
-# function: 시작일과 종료일 사이에 있는 모든 날짜를 반환하는 함수
-def get_range_dates(start_date, end_date):
-    date_form = '%Y%m%d'
-    s = datetime.datetime.strptime(start_date, date_form).date()
-    d = datetime.datetime.strptime(end_date, date_form).date()
-
-    result_date = set()
-    for day in range((d-s).days + 1):
-        result_date.add((s + datetime.timedelta(days=day)).strftime(date_form))
-
-    return result_date
-
-
 # function: 악성/정상 파일을 train/test 데이터셋으로 분류하는 함수. 특별히 악성코드는 수집날짜로 분류한다.
-def split_train_test_data(class_type, mal_path, ben_path, mal_train_start_date, mal_train_end_date,
+def split_train_test_data_to_date(class_type, mal_path, ben_path, mal_train_start_date, mal_train_end_date,
                           mal_test_start_date, mal_test_end_date, ben_ratio, ext, fhs_flag):
     print('@ split train test data')
 
@@ -258,30 +269,24 @@ def split_train_test_data(class_type, mal_path, ben_path, mal_train_start_date, 
     no_ben_train_data = int(ben_ratio_number*len(ben_data))
     ben_train_indices, ben_test_indices = ben_total_indices[:no_ben_train_data], ben_total_indices[no_ben_train_data:]
 
-    result_indices = list()
-    result_indices.append((np.asarray(mal_train_indices), np.asarray(mal_test_indices)))
+    indices = list()
+    indices.append((np.asarray(mal_train_indices), np.asarray(mal_test_indices)))
     if class_type == 'binary':
-        result_indices.append((ben_train_indices, ben_test_indices))
+        indices.append((ben_train_indices, ben_test_indices))
 
-    return mal_data, ben_data, result_indices
+    return mal_data, ben_data, [indices]
 
 
-def read_kisa_data(test_file_path, label_path, fh_type):
-    label_dict = dict()
-    with open(label_path, 'r', encoding='utf-8') as f:
-        rdr = csv.reader(f)
-        for line in rdr:
-            file_name, label = line[0].replace('.vir', '.{}'.format(fh_type)), int(line[1])
-            label_dict[file_name] = label
-
-    mal_data_path = list()
-    ben_data_path = list()
-    for (file_name, label) in label_dict.items():
-        full_path = os.path.join(test_file_path, file_name)
-        if os.path.exists(full_path):
-            if label == 0:  # benignware
-                ben_data_path.append(full_path)
-            else:
-                mal_data_path.append(full_path)
-
-    return np.array(mal_data_path), np.array(ben_data_path)
+# function: 입력 경로에 대한 모든 파일 경로를 리스트로 반환하는 함수
+def walk_dir(input_path, ext):
+    print('@ walk dir start')
+    result = list()
+    for path, dirs, files in os.walk(input_path):
+        if len(dirs) == 0:
+            print(path)
+            for file in files:
+                if ext == os.path.splitext(file)[-1][1:]:
+                    file_path = os.path.join(path, file)  # store "file path"
+                    result.append(file_path)
+    print('@ walk dir finish')
+    return result

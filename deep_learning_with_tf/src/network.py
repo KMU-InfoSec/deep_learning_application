@@ -3,7 +3,7 @@ import tensorflow as tf
 
 # config parameters
 config = configparser.ConfigParser()
-config.read('config.ini')
+config.read('realconfig.ini')
 
 # define parameters
 input_layer_size = int(config.get('CLASSIFIER', 'INPUT_SIZE'))
@@ -20,12 +20,13 @@ def inference_ANN(x, prob, train_flag=False):
     dense_layer = x
     for hidden_node in hidden_node_list:
         dense_layer = tf.layers.dense(inputs=dense_layer, units=hidden_node, activation=tf.nn.relu)
+        dense_layer = tf.layers.batch_normalization(dense_layer, axis=-1)
         # if train_flag:
         #     dense_layer = tf.nn.dropout(dense_layer, prob)
 
     y_ = tf.layers.dense(inputs=dense_layer, units=output_layer_size)
 
-    return y_
+    return y_, dense_layer
 
 
 def inference_CNN(x, prob, L2_REGULARIZATION_SCALE, train_flag=False):

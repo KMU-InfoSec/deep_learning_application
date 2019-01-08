@@ -7,41 +7,40 @@ from util import *
 
 
 class KISNet:
-    def __init__(self, model_num, model_dic, model_reuse_flag=True):
+    def __init__(self, model_num, model_arg, model_reuse_flag=False):
         '''
             init deep learning environment variable
         '''
-        self.gpu_num = model_dic['gpu_num']
+        self.gpu_num = model_arg['gpu_num']
         self.model_num = model_num
-        self.model_snapshot_name = model_dic['model_storage']
+        self.model_snapshot_name = model_arg['model_storage']
 
-        self.input_layer_size = model_dic['net_input_size']
-        self.output_layer_size = model_dic['net_output_size']
-        self.network_type = model_dic['net_type']
+        self.input_layer_size = model_arg['net_input_size']
+        self.output_layer_size = model_arg['net_output_size']
+        self.network_type = model_arg['net_type']
 
         self.train_flag = False
-        self.data_type = model_dic['data_type']
 
         '''
             init deep learning hyper parameter
         '''
-        self.keep_prob = model_dic['keep_prob']
-        self.train_learning_rate = model_dic['learning_rate']
-        self.batch_size = model_dic['batch_size']
-        self.train_epoch = model_dic['epoch']
-        self.LR_DECAY_OPTION = model_dic['LR_DECAY_OPTION']
-        self.LR_DECAY_DROP_RATIO = model_dic['LR_DECAY_DROP_RATIO']
-        self.LR_DECAY_EPOCH = model_dic['LR_DECAY_EPOCH']
-        self.L2_REGULARIZATION = model_dic['L2_REGULARIZATION']
-        self.L2_REGULARIZATION_SCALE = model_dic['L2_REGULARIZATION_SCALE']
+        self.keep_prob = model_arg['keep_prob']
+        self.train_learning_rate = model_arg['learning_rate']
+        self.batch_size = model_arg['batch_size']
+        self.train_epoch = model_arg['epoch']
+        self.LR_DECAY_OPTION = model_arg['LR_DECAY_OPTION']
+        self.LR_DECAY_DROP_RATIO = model_arg['LR_DECAY_DROP_RATIO']
+        self.LR_DECAY_EPOCH = model_arg['LR_DECAY_EPOCH']
+        self.L2_REGULARIZATION = model_arg['L2_REGULARIZATION']
+        self.L2_REGULARIZATION_SCALE = model_arg['L2_REGULARIZATION_SCALE']
         '''
             init data
         '''
-        self.class_type = model_dic['class_type']
-        self.mal_path = model_dic['mal_path']
-        self.ben_path = model_dic['ben_path']
-        self.indices = model_dic['indices']
-        self.label_path = model_dic['label_path']
+        self.class_type = model_arg['class_type']
+        self.mal_path = model_arg['mal_path']
+        self.ben_path = model_arg['ben_path']
+        self.indices = model_arg['indices']
+        self.label_path = model_arg['label_path']
 
         '''
             init network parameter
@@ -114,6 +113,10 @@ class KISNet:
                                           self.ben_path[self.indices[1][0]] if self.class_type == 'binary' else list(),
                                           self.label_path, batch_size=self.batch_size, epoch=self.train_epoch,
                                           mode='train')
+        self.eval_data = data.DataLoader(self.mal_path[self.indices[0][1]],
+                                         self.ben_path[self.indices[1][1]] if self.class_type == 'binary' else list(),
+                                         self.label_path, batch_size=self.batch_size, epoch=self.train_epoch,
+                                         mode='evaluate')
         print('@ training start')
         self.train_flag = True
 
@@ -165,14 +168,14 @@ class KISNet:
                         ))
 
                     if iteration % 100 == 0:
-                        model_saver.save(sess, model_path)
+                        # model_saver.save(sess, model_path)
                         pass
                 else:  # epoch finish
                     pass
-                    # temp_acc = self.evaluate_epoch_compare(sess, notice['epoch'])
-                    # if temp_acc > best_acc:
-                    #     best_acc = temp_acc
-                    #     model_saver.save(sess, model_path)
+                    temp_acc = self.evaluate_epoch_compare(sess, notice['epoch'])
+                    if temp_acc > best_acc:
+                        best_acc = temp_acc
+                        model_saver.save(sess, model_path)
             else:
                 pass
             train_time = time.time() - train_time
@@ -234,7 +237,7 @@ class KISNet:
                     answer_cnt += int(acc_cnt)
 
                     # flatten_list += flatten.tolist()
-                    # mal_probs += y_prob[:, 1].tolist()
+                    mal_probs += y_prob[:, 1].tolist()
 
                     if iteration and iteration % 10 == 0:
                         _i = (iteration+1) * no_eval_data
@@ -266,7 +269,7 @@ class KISNet:
                            mal_probs)
 
         # plot confusion matrix
-        # plot_confusion_matrix(self.model_num, actual_labels, pred_labels, self.output_layer_size)
+        plot_confusion_matrix(self.model_num, actual_labels, pred_labels, self.output_layer_size)
         del self.eval_data
 
         return total_accuracy
