@@ -1,7 +1,13 @@
-import os
 import subprocess
-
+import psutil
 from settings import *
+
+
+def kill(proc_pid):
+    process = psutil.Process(proc_pid)
+    for proc in process.children(recursive=True):
+        proc.kill()
+    process.kill()
 
 
 def make_idb_ops(file_path):
@@ -44,14 +50,19 @@ def make_idb_ops(file_path):
             ops_path=ops_dst_path, file_path=file_path)
         curr_state = 'IDB+OPS'
 
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
     try:
-        subprocess.call(command, shell=True, timeout=IDA_TIME_OUT)  # shell: 앞 인자를 list->str 로 변환
+        proc.wait(timeout=IDA_TIME_OUT)  # shell: 앞 인자를 list->str 로 변환
         if os.path.exists(idb_dst_path):
             print("{0}의 {1}을 성공적으로 분석하였습니다.".format(file_name, curr_state))
             # os.remove(file_path)
         else:
             print("{0}의 {1}을 분석하는데 실패하였습니다.".format(file_name, curr_state))
-    except:
+    except subprocess.TimeoutExpired:
+        try:
+            kill(proc.pid)
+        except:
+            pass
         print("{}을 분석하는데 실패하였습니다.".format(file_name))
 
     pass

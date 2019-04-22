@@ -2,7 +2,7 @@
 
 import zipfile, os
 
-from preprocessing.settings import *
+from settings import *
 
 import multiprocessing as mp
 

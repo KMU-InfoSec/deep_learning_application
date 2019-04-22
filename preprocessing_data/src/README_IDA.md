@@ -1,9 +1,8 @@
 # IDA
 
 ## 사용법
-1. IDA Pro 를 설치한다
-2. IDA Pro 를 방화벽 규칙에 추가 한다. ( 외부로 가는 것 차단 )
-3. [settings.py](./settings.py) 에 있는 다음 변수 값을 수정 한다.
+1. IDA Pro 를 설치한다. (설치 후 컴퓨터 재부팅 및 IDA  수동 실행 해줘야 함)
+2. [settings.py](./settings.py) 에 있는 다음 변수 값을 수정 한다.
 *  `CPU_COUNT`, 'IDA_PATH', 'BASE_PATH'
 4. [나스](http://203.246.112.134:5000/)에서 악성코드(/homes/virussign)를 받아서 [settings.py](./settings.py) 의 'ZIP_FILE_PATH'에 넣는다.
 5. [나스](http://203.246.112.134:5000/)에서 idb를 다운로드한다.

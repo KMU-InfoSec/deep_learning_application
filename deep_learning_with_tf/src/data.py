@@ -161,16 +161,12 @@ class DataLoader:
                     yield (ben_data[i:i+batch_size], ben_label[i:i+batch_size])
 
     def __iter__(self):
-        if self.class_type == 'binary':
-            batch_size = int(self.batch_size // 2)
-        else:
-            batch_size = self.batch_size
+        batch_size = int(self.batch_size // 2) if self.class_type == 'binary' else self.batch_size
 
         if self.iter_mode == 'train':  # mini-batch
             for ((mal_data, mal_label, notice), (ben_data, ben_label)) in zip(self._mal_generator(batch_size),
                                                                       self._ben_generator(batch_size)):
                 yield ((mal_data + ben_data), (mal_label + ben_label), notice)
-
         else:  # evaluation mode
             # initialize batch data/label
             mal_data = list(self.mal_data_dict.values())

@@ -3,14 +3,16 @@ doc/
 .idea/
 
 # project result files/directories
+data/
 result/
 saver/
 **/*.set
 **/*.txt
 model_storage/
 
-# practice files
-**/board.py
+# setting files
+**/settings.py
+**/config.ini
 
 # --- Default Python .gitignore Options by gitignore.io/api/python ---
 # Byte-compiled / optimized / DLL files

@@ -12,7 +12,7 @@ from sklearn.metrics import confusion_matrix
 
 # config parameters
 config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
-config.read('realconfig.ini')
+config.read('config.ini')
 
 
 # function: 입력 파일의 이름을 md5로 바꿔주는 함수
@@ -187,13 +187,13 @@ def read_test_data(test_file_path, label_path, fh_type):
     with open(label_path, 'r', encoding='utf-8') as f:
         rdr = csv.reader(f)
         for line in rdr:
-            file_name, label = line[0].replace('.vir', '.{}'.format(fh_type)), int(line[1])
+            file_name, label = line[0], int(line[1])
             label_dict[file_name] = label
 
     mal_data_path = list()
     ben_data_path = list()
     for (file_name, label) in label_dict.items():
-        full_path = os.path.join(test_file_path, file_name)
+        full_path = os.path.join(test_file_path, file_name + '.{}'.format(fh_type))
         if os.path.exists(full_path):
             if label == 0:  # benignware
                 ben_data_path.append(full_path)
@@ -215,21 +215,19 @@ def save_result_to_csv(step, filenames, actuals, preds, mal_probs):
     # save result as csv file to SEEK
     with open(os.path.join(result_dir, 'inference{}.csv'.format(step)), 'w', newline='', encoding='utf-8') as f:
         wr = csv.writer(f)
-        wr.writerow(['md5', 'prob'])  # 확률
-        # wr.writerow(['md5', 'label'])  # 라벨
-        for name, pred_label, mal_prob in zip(filenames, preds, mal_probs):
-            wr.writerow([name, '{0:.4f}'.format(mal_prob)])  # 확률
-            # wr.writerow([name, pred_label])  # 라벨
+        wr.writerow(['md5', 'label', 'prob'])  # 확률
+        for name, pred_label, actual_label, mal_prob in zip(filenames, preds, actuals, mal_probs):
+            wr.writerow([name, actual_label, '{0:.4f}'.format(mal_prob)])
         else:  # 딥러닝이 맞추지 못한 걸 csv file에 추가해야 한다.
             # load test file names
-            test_file_md5_set = set()
+            test_file_md5_dict = dict()
             with open(config.get('PATH', 'LABEL_FILE'), 'r', encoding='utf-8') as f:
                 for line in csv.reader(f):
                     md5, label = line[0].replace('.vir', ''), int(line[1])
-                    test_file_md5_set.add(md5)
-            for test_file_md5 in test_file_md5_set:
-                if not test_file_md5 in filenames:
-                    wr.writerow([test_file_md5, 0.5])  # 확률
+                    test_file_md5_dict[md5] = label
+            for md5 in test_file_md5_dict:
+                if not md5 in filenames:
+                    wr.writerow([md5, test_file_md5_dict[md5], 0.5])  # 확률
 
     # save result that gets wrong cases as csv file
     # with open(os.path.join(result_dir, 'profiling{}.csv'.format(step)), 'w', newline='', encoding='utf-8') as f:

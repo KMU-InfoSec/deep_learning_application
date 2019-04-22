@@ -28,11 +28,11 @@ class KISNet:
         self.train_learning_rate = model_arg['learning_rate']
         self.batch_size = model_arg['batch_size']
         self.train_epoch = model_arg['epoch']
-        self.LR_DECAY_OPTION = model_arg['LR_DECAY_OPTION']
-        self.LR_DECAY_DROP_RATIO = model_arg['LR_DECAY_DROP_RATIO']
-        self.LR_DECAY_EPOCH = model_arg['LR_DECAY_EPOCH']
-        self.L2_REGULARIZATION = model_arg['L2_REGULARIZATION']
-        self.L2_REGULARIZATION_SCALE = model_arg['L2_REGULARIZATION_SCALE']
+        self.LR_DECAY_OPTION = model_arg['lr_decay_option']
+        self.LR_DECAY_DROP_RATIO = model_arg['lr_decay_drop_ratio']
+        self.LR_DECAY_EPOCH = model_arg['lr_decay_epoch']
+        self.L2_REGULARIZATION = model_arg['l2_reg_option']
+        self.L2_REGULARIZATION_SCALE = model_arg['l2_reg_scale']
         '''
             init data
         '''
@@ -47,7 +47,21 @@ class KISNet:
         '''
         with tf.device('/gpu:{}'.format(self.gpu_num)):
             tf.reset_default_graph()
-            self.x = tf.placeholder(tf.float32, shape=[None, self.input_layer_size], name='x_input')
+
+            # for MCSC experiment
+            if self.network_type == 'CNN_2D':
+                _IMAGE_SIZE_DICT = {256: [16, 16], 512: [16, 32], 768: [24, 32]}
+                layer_size = max(_IMAGE_SIZE_DICT[self.input_layer_size])
+                self.x = tf.placeholder(tf.float32, shape=[None, layer_size, layer_size], name='x_input')
+            elif self.network_type == 'CNN2':
+                self.x = tf.placeholder(tf.float32, shape=[None, self.input_layer_size, 2], name='x_input')
+            elif self.network_type == 'RNN':
+                self.x = tf.placeholder(tf.float32, shape=[None, None], name='x_input')
+            elif self.network_type == 'ANN' or self.network_type == 'CNN':
+                self.x = tf.placeholder(tf.float32, shape=[None, self.input_layer_size], name='x_input')
+            else:
+                raise NotImplementedError
+
             self.y = tf.placeholder(tf.int32, shape=[None], name='y_output')
             self.y_, self.flatten = self.inference()
             self.y_one_hot = tf.one_hot(self.y, self.output_layer_size, dtype=tf.int32, name='y_one-hot')
@@ -89,9 +103,14 @@ class KISNet:
             return net.inference_ANN(self.x, self.keep_prob, self.train_flag)
         elif self.network_type == 'CNN':
             return net.inference_CNN(self.x, self.keep_prob, self.L2_REGULARIZATION_SCALE, self.train_flag)
+        elif self.network_type == 'CNN2':
+            return net.inference_CNN2(self.x, self.keep_prob, self.train_flag)
+        elif self.network_type == 'CNN_2D':
+            return net.inference_CNN_2D(self.x, self.keep_prob, self.train_flag)
+        elif self.network_type == 'RNN':
+            return net.inference_LSTM(self.x, self.keep_prob, self.train_flag)
         else:
             raise NotImplementedError
-        pass
 
     def _set_lr(self, cur_epoch):
         if self.LR_DECAY_OPTION == 'step_decay':
@@ -200,10 +219,10 @@ class KISNet:
         return total_accuracy
 
     def evaluate(self):
-        self.eval_data = data.DataLoader(self.mal_path[self.indices[0][1]],
-                                         self.ben_path[self.indices[1][1]] if self.class_type == 'binary' else list(),
-                                         self.label_path, batch_size=self.batch_size, epoch=self.train_epoch,
-                                         mode='evaluate')
+        # self.eval_data = data.DataLoader(self.mal_path[self.indices[0][1]],
+        #                                  self.ben_path[self.indices[1][1]] if self.class_type == 'binary' else list(),
+        #                                  self.label_path, batch_size=self.batch_size, epoch=self.train_epoch,
+        #                                  mode='evaluate')
         print('@ evaluating start')
         self.train_flag = False
 

@@ -2,7 +2,7 @@ import multiprocessing as mp
 import time
 import zipfile
 
-from preprocessing.settings import *
+from settings import *
 
 ZIP_PATH = r'D:\working_board\dataset\unused\malware\fh_bovc\1024'
 SAVE_PATH = ZIP_PATH
@@ -18,7 +18,7 @@ def create_dir_list(file_path):
     return dir_list
 
 
-def zip_files(dir_path):
+def zip_files(dir_path, ext):
     start_time = time.time()
     dir_name = os.path.split(dir_path)[-1]
     print('{} start'.format(dir_name))
